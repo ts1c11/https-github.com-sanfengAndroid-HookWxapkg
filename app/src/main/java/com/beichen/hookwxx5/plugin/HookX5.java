@@ -167,8 +167,55 @@ public class HookX5 implements IXposedHookLoadPackage {
                     String s = (String) param.getResult();
                     Log.e(TAG, "脚本名: " + name1 + " 脚本内容: " + s);
                     if (name1.equals("game.js")){
-                        s = s.replace("1e4==InitMark.uid", "1e4!=InitMark.uid");
-                        Log.e(TAG, "替换game.js--> 1e4==InitMark.uid 为 1e4!=InitMark.uid");
+                        if (s.contains("1e4==InitMark.uid")){
+                            s = s.replace("1e4==InitMark.uid", "1e4!=InitMark.uid");
+                            Log.e(TAG + "脚本替换", "修改getSign使其打印日志");
+                        }else {
+                            Log.e(TAG + "脚本替换", "未找到 1e4==InitMark.uid 可能是由于更新导致改变,请重新替换g");
+                        }
+
+                        // 章鱼必中修改
+                        // for(var d=i.boxes,h=a+.5*InitMark.stageOffHeight,u=0;8>u;u++)if(d[u+1]>0&&t["hitImg"+u].hitTestPoint(o,h)){this._mark=u+1;break}
+                        // for(var d=i.boxes,u=0;u<8;u++)if(d[u+1]>0){this._mark=u+1;break}
+
+                        if (s.contains("for(var d=i.boxes,h=a+.5*InitMark.stageOffHeight,u=0;8>u;u++)if(d[u+1]>0&&t[\"hitImg\"+u].hitTestPoint(o,h)){this._mark=u+1;break}")){
+                            s = s.replace("for(var d=i.boxes,h=a+.5*InitMark.stageOffHeight,u=0;8>u;u++)if(d[u+1]>0&&t[\"hitImg\"+u].hitTestPoint(o,h)){this._mark=u+1;break}", "for(var d=i.boxes,u=0;u<8;u++)if(d[u+1]>0){this._mark=u+1;break}");
+                            Log.e(TAG + "脚本替换", "替换章鱼每次必中");
+                        }else{
+                            Log.e(TAG + "脚本替换", "没找到 for(var d=i.boxes,h=a+.5*InitMark.stageOffHeight,u=0;8>u;u++)if(d[u+1]>0&&t[\"hitImg\"+u].hitTestPoint(o,h)){this._mark=u+1;break} 可能是由于版本更新导致代码变化,请重新替换");
+                        }
+
+                        // 猜金币第一处
+                        // i!=t&&(e["island"+t].alpha=0,e["group"+t].alpha=0)}}
+                        // i!=t&&(e["island"+t].alpha=0,e["group"+t].alpha = 0)}console.log("第一处猜金币, 0 : "+e.stealData.targets[0].money+"  1 : "+e.stealData.targets[1].money+"  2 : "+e.stealData.targets[2].money)}
+
+                        if (s.contains("i!=t&&(e[\"island\"+t].alpha=0,e[\"group\"+t].alpha=0)}}")){
+                            s = s.replace("i!=t&&(e[\"island\"+t].alpha=0,e[\"group\"+t].alpha=0)}}", "i!=t&&(e[\"island\"+t].alpha=0,e[\"group\"+t].alpha = 0)}console.log(\"第一处猜金币\")}");
+                            Log.e(TAG + "脚本替换", "替换第一处猜金币");
+                        }else {
+                            Log.e(TAG + "脚本替换", "没找到第一处猜金币");
+                        }
+                        // 猜金币第二处
+                        // e["island"+n].initIslandView(i)}
+                        // e["island"+n].initIslandView(i)}console.log("第二处猜金币: "+e._stealData.targets[0].isRichMan+"  "+e._stealData.targets[1].isRichMan+"  "+e._stealData.targets[2].isRichMan),
+
+                        if (s.contains("e[\"island\"+n].initIslandView(i)}")){
+                            s = s.replace("e[\"island\"+n].initIslandView(i)}", "e[\"island\"+n].initIslandView(i)}console.log(\"第二处猜金币\"),");
+                            Log.e(TAG + "脚本替换", "替换第二处猜金币");
+                        }else {
+                            Log.e(TAG + "脚本替换", "没找到第二处猜金币");
+                        }
+
+                        // 猜金币第三处
+                        // e.island.initIslandView(dataManager.data.stealIslands[e.selectId]),e.bottomGroup.y=InitMark.stageHight
+                        // e.island.initIslandView(dataManager.data.stealIslands[e.selectId]),e.bottomGroup.y=InitMark.stageHight,console.log("第三处猜金币: "+e._stealData.targets[0].isRichMan+"  "+e._stealData.targets[1].isRichMan+"  "+e._stealData.targets[2].isRichMan)
+
+                        if (s.contains("e.island.initIslandView(dataManager.data.stealIslands[e.selectId]),e.bottomGroup.y=InitMark.stageHight")){
+                            s = s.replace("e.island.initIslandView(dataManager.data.stealIslands[e.selectId]),e.bottomGroup.y=InitMark.stageHight", "e.island.initIslandView(dataManager.data.stealIslands[e.selectId]),e.bottomGroup.y=InitMark.stageHight,console.log(\"第三处猜金币\")");
+                            Log.e(TAG + "脚本替换", "替换第三处猜金币");
+                        }else {
+                            Log.e(TAG + "脚本替换", "没找到第三处猜金币");
+                        }
                     }
                     param.setResult(s);
                     break;
