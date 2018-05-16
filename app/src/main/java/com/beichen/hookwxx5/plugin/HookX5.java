@@ -21,6 +21,7 @@ public class HookX5 implements IXposedHookLoadPackage {
         if (!loadPackageParam.packageName.equals("com.tencent.mm")){
             return;
         }
+
         ClassLoader loader = loadPackageParam.classLoader;
         Log.e(TAG, "开始Hook微信");
         hookLog(loadPackageParam.classLoader);
@@ -165,6 +166,11 @@ public class HookX5 implements IXposedHookLoadPackage {
                     String name1 = (String) param.args[1];
                     String s = (String) param.getResult();
                     Log.e(TAG, "脚本名: " + name1 + " 脚本内容: " + s);
+                    if (name1.equals("game.js")){
+                        s = s.replace("1e4==InitMark.uid", "1e4!=InitMark.uid");
+                        Log.e(TAG, "替换game.js--> 1e4==InitMark.uid 为 1e4!=InitMark.uid");
+                    }
+                    param.setResult(s);
                     break;
             }
 
@@ -199,6 +205,9 @@ public class HookX5 implements IXposedHookLoadPackage {
             String arg1 = (String) param.args[1];
             Object[] arg2 = (Object[]) param.args[2];
             String format = arg2 == null ? arg1 : String.format(arg1, arg2);
+            if (TextUtils.isEmpty(format)){
+                format = "null";
+            }
             switch (name){
                 case "f":
                     level = 0;
