@@ -35,18 +35,12 @@ public class HookX5 implements IXposedHookLoadPackage {
         XposedHelpers.findAndHookMethod(webView, "loadData", String.class, String.class, String.class, x5WebViewCallback);
         XposedHelpers.findAndHookMethod(webView, "loadDataWithBaseURL", String.class, String.class, String.class, String.class, String.class, x5WebViewCallback);
 
-//        XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.game.page.b", loader, "loadUrl", String.class, callback);
-//        XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.page.s", loader, "loadUrl", String.class, callback);
-//        XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.page.e", loader, "loadUrl", String.class, callback);
-//        XposedHelpers.findAndHookMethod("com.tencent.xweb.WebView", loader, "loadUrl", String.class, callback);
-//        XposedHelpers.findAndHookMethod("com.tencent.mm.ui.widget.MMWebView", loader, "loadUrl", String.class, callback);
-
         // 这个类是在读取JS文件为字符串
         Class<?> appbrandEClass = loader.loadClass("com.tencent.mm.plugin.appbrand.e");
-        XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.appcache.ap", loader, "a", appbrandEClass, String.class, callback);
+        XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.appcache.ap", loader, "a", appbrandEClass, String.class, appbrandCallback);
 
-        // amd方法可以获取软件小程序
-//        XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.page.t", loader, "amd", callback);
+        // amd方法可以获取软件小程序的appId
+//        XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.page.t", loader, "amd", appbrandCallback);
 
     }
 
@@ -117,23 +111,11 @@ public class HookX5 implements IXposedHookLoadPackage {
         XposedHelpers.findAndHookMethod(logClass, "l", String.class, String.class, Object[].class, logCallback);
     }
 
-
-    private XC_MethodHook callback = new XC_MethodHook() {
+    private XC_MethodHook appbrandCallback = new XC_MethodHook() {
         @Override
         protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
 
             switch (param.method.getDeclaringClass().getName() + "." + param.method.getName()){
-                case "com.tencent.mm.plugin.appbrand.game.page.b.loadUrl":
-                    break;
-                case "com.tencent.mm.plugin.appbrand.page.s.loadUrl":
-                    break;
-                case "com.tencent.mm.plugin.appbrand.page.e.loadUrl":
-                    break;
-                case "com.tencent.xweb.WebView.loadUrl":
-                    break;
-                case "com.tencent.mm.ui.widget.MMWebView.loadUrl":
-                    break;
-                    // appbrand 的webview
                 case "com.tencent.mm.plugin.appbrand.page.t.amd":
                     break;
                 case "com.tencent.mm.plugin.appbrand.appcache.ap.a":
@@ -169,11 +151,10 @@ public class HookX5 implements IXposedHookLoadPackage {
                     if (name1.equals("game.js")){
                         if (s.contains("1e4==InitMark.uid")){
                             s = s.replace("1e4==InitMark.uid", "1e4!=InitMark.uid");
-                            Log.e(TAG + "脚本替换", "修改getSign使其打印日志");
+                            Log.e(TAG + "脚本替换", "修改getSign开启打印日志");
                         }else {
                             Log.e(TAG + "脚本替换", "未找到 1e4==InitMark.uid 可能是由于更新导致改变,请重新替换g");
                         }
-
                         // 章鱼必中修改
                         // for(var d=i.boxes,h=a+.5*InitMark.stageOffHeight,u=0;8>u;u++)if(d[u+1]>0&&t["hitImg"+u].hitTestPoint(o,h)){this._mark=u+1;break}
                         // for(var d=i.boxes,u=0;u<8;u++)if(d[u+1]>0){this._mark=u+1;break}
@@ -186,22 +167,14 @@ public class HookX5 implements IXposedHookLoadPackage {
                         }
 
                         // 根据 dataManager.data.stealIslands[i].crowns;来确定最富有的
-
-                        // 猜金币第二处
                         // e["island"+n].initIslandView(i)}
-                        // e["island"+n].initIslandView(i)}new TextPop("猜金币二 目标crowns: "+dataManager.data.stealTarget.crowns+"  分别: "+dataManager.data.stealIslands[0].crowns+"  "+dataManager.data.stealIslands[1].crowns+"  "+dataManager.data.stealIslands[2].crowns);
-
-
-                        //var tar=0;if(dataManager.data.stealTarget.crowns==dataManager.data.stealIslands[0].crowns){tar=1;}else if(dataManager.data.stealTarget.crowns==dataManager.data.stealIslands[1].crowns){tar=2;}else{tar=3;}console.log("猜金币,选择: "+tar);new TextPop("选择: "+tar);
-
-
+                        // e["island"+n].initIslandView(i)}var tar=0;if(dataManager.data.stealTarget.crowns==dataManager.data.stealIslands[0].crowns){tar=1;}else if(dataManager.data.stealTarget.crowns==dataManager.data.stealIslands[1].crowns){tar=2;}else{tar=3;}console.log("猜金币,选择: "+tar);new TextPop("选择: "+tar);
                         if (s.contains("e[\"island\"+n].initIslandView(i)}")){
                             s = s.replace("e[\"island\"+n].initIslandView(i)}", "e[\"island\"+n].initIslandView(i)}var tar=0;if(dataManager.data.stealTarget.crowns==dataManager.data.stealIslands[0].crowns){tar=1;}else if(dataManager.data.stealTarget.crowns==dataManager.data.stealIslands[1].crowns){tar=2;}else{tar=3;}console.log(\"猜金币,选择: \"+tar);new TextPop(\"选择: \"+tar);");
                             Log.e(TAG + "脚本替换", "替换猜金币");
                         }else {
-                            Log.e(TAG + "脚本替换", "没找到猜金币");
+                            Log.e(TAG + "脚本替换", "没找到猜金币, 可能是由于版本更新,请重新替换");
                         }
-
                     }
                     param.setResult(s);
                     break;
@@ -243,28 +216,18 @@ public class HookX5 implements IXposedHookLoadPackage {
             }
             switch (name){
                 case "f":
-                    level = 0;
-                    break;
-                case "e":
-                    level = 2;
-                    break;
-                case "w":
-                    level = 2;
-                    break;
                 case "i":
                     level = 0;
                     break;
                 case "d":
-                    level = 1;
-                    break;
                 case "v":
-                    level = 1;
-                    break;
                 case "k":
-                    level = 1;
-                    break;
                 case "l":
                     level = 1;
+                    break;
+                case "e":
+                case "w":
+                    level = 2;
                     break;
             }
             switch (level){
