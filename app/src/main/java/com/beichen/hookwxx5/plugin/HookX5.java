@@ -185,37 +185,23 @@ public class HookX5 implements IXposedHookLoadPackage {
                             Log.e(TAG + "脚本替换", "没找到 for(var d=i.boxes,h=a+.5*InitMark.stageOffHeight,u=0;8>u;u++)if(d[u+1]>0&&t[\"hitImg\"+u].hitTestPoint(o,h)){this._mark=u+1;break} 可能是由于版本更新导致代码变化,请重新替换");
                         }
 
-                        // 猜金币第一处
-                        // i!=t&&(e["island"+t].alpha=0,e["group"+t].alpha=0)}}
-                        // i!=t&&(e["island"+t].alpha=0,e["group"+t].alpha = 0)}console.log("第一处猜金币, 0 : "+e.stealData.targets[0].money+"  1 : "+e.stealData.targets[1].money+"  2 : "+e.stealData.targets[2].money)}
+                        // 根据 dataManager.data.stealIslands[i].crowns;来确定最富有的
 
-                        if (s.contains("i!=t&&(e[\"island\"+t].alpha=0,e[\"group\"+t].alpha=0)}}")){
-                            s = s.replace("i!=t&&(e[\"island\"+t].alpha=0,e[\"group\"+t].alpha=0)}}", "i!=t&&(e[\"island\"+t].alpha=0,e[\"group\"+t].alpha = 0)}console.log(\"第一处猜金币\")}");
-                            Log.e(TAG + "脚本替换", "替换第一处猜金币");
-                        }else {
-                            Log.e(TAG + "脚本替换", "没找到第一处猜金币");
-                        }
                         // 猜金币第二处
                         // e["island"+n].initIslandView(i)}
-                        // e["island"+n].initIslandView(i)}console.log("第二处猜金币: "+e._stealData.targets[0].isRichMan+"  "+e._stealData.targets[1].isRichMan+"  "+e._stealData.targets[2].isRichMan),
+                        // e["island"+n].initIslandView(i)}new TextPop("猜金币二 目标crowns: "+dataManager.data.stealTarget.crowns+"  分别: "+dataManager.data.stealIslands[0].crowns+"  "+dataManager.data.stealIslands[1].crowns+"  "+dataManager.data.stealIslands[2].crowns);
+
+
+                        //var tar=0;if(dataManager.data.stealTarget.crowns==dataManager.data.stealIslands[0].crowns){tar=1;}else if(dataManager.data.stealTarget.crowns==dataManager.data.stealIslands[1].crowns){tar=2;}else{tar=3;}console.log("猜金币,选择: "+tar);new TextPop("选择: "+tar);
+
 
                         if (s.contains("e[\"island\"+n].initIslandView(i)}")){
-                            s = s.replace("e[\"island\"+n].initIslandView(i)}", "e[\"island\"+n].initIslandView(i)}console.log(\"第二处猜金币\"),");
-                            Log.e(TAG + "脚本替换", "替换第二处猜金币");
+                            s = s.replace("e[\"island\"+n].initIslandView(i)}", "e[\"island\"+n].initIslandView(i)}var tar=0;if(dataManager.data.stealTarget.crowns==dataManager.data.stealIslands[0].crowns){tar=1;}else if(dataManager.data.stealTarget.crowns==dataManager.data.stealIslands[1].crowns){tar=2;}else{tar=3;}console.log(\"猜金币,选择: \"+tar);new TextPop(\"选择: \"+tar);");
+                            Log.e(TAG + "脚本替换", "替换猜金币");
                         }else {
-                            Log.e(TAG + "脚本替换", "没找到第二处猜金币");
+                            Log.e(TAG + "脚本替换", "没找到猜金币");
                         }
 
-                        // 猜金币第三处
-                        // e.island.initIslandView(dataManager.data.stealIslands[e.selectId]),e.bottomGroup.y=InitMark.stageHight
-                        // e.island.initIslandView(dataManager.data.stealIslands[e.selectId]),e.bottomGroup.y=InitMark.stageHight,console.log("第三处猜金币: "+e._stealData.targets[0].isRichMan+"  "+e._stealData.targets[1].isRichMan+"  "+e._stealData.targets[2].isRichMan)
-
-                        if (s.contains("e.island.initIslandView(dataManager.data.stealIslands[e.selectId]),e.bottomGroup.y=InitMark.stageHight")){
-                            s = s.replace("e.island.initIslandView(dataManager.data.stealIslands[e.selectId]),e.bottomGroup.y=InitMark.stageHight", "e.island.initIslandView(dataManager.data.stealIslands[e.selectId]),e.bottomGroup.y=InitMark.stageHight,console.log(\"第三处猜金币\")");
-                            Log.e(TAG + "脚本替换", "替换第三处猜金币");
-                        }else {
-                            Log.e(TAG + "脚本替换", "没找到第三处猜金币");
-                        }
                     }
                     param.setResult(s);
                     break;
