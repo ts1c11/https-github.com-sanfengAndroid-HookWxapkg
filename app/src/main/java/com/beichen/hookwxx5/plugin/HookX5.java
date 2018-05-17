@@ -116,7 +116,28 @@ public class HookX5 implements IXposedHookLoadPackage {
 
         // 将小程序日志自定义转发到java
         Class<?> arg0Class = loader.loadClass("com.tencent.mm.plugin.appbrand.j");
-        XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.jsapi.al", loader, "a", arg0Class, JSONObject.class, int.class, logCallback);
+        XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.jsapi.al", loader, "a", arg0Class, JSONObject.class, int.class, new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                JSONObject jsonObjectArg1 = (JSONObject) param.args[1];
+                int l = jsonObjectArg1.getInt("level");
+                String logs = jsonObjectArg1.getString("logs");
+                switch (l){
+                    case 0:
+                        Log.d(TAG + " jsLog", logs);
+                        break;
+                    case 1:
+                        Log.i(TAG + " jsLog", logs);
+                        break;
+                    case 2:
+                        Log.w(TAG + " jsLog", logs);
+                        break;
+                    case 3:
+                        Log.e(TAG + " jsLog", logs);
+                        break;
+                }
+            }
+        });
     }
 
     private XC_MethodHook appbrandCallback = new XC_MethodHook() {
@@ -274,25 +295,6 @@ public class HookX5 implements IXposedHookLoadPackage {
                     break;
                 case 2:
                     Log.e("beichen " + arg0, format);
-                    break;
-                case 0x100:
-                    JSONObject jsonObjectArg1 = (JSONObject) param.args[1];
-                    int l = jsonObjectArg1.getInt("level");
-                    String logs = jsonObjectArg1.getString("logs");
-                    switch (l){
-                        case 0:
-                            Log.d(TAG + " jsLog", logs);
-                            break;
-                        case 1:
-                            Log.i(TAG + " jsLog", logs);
-                            break;
-                        case 2:
-                            Log.w(TAG + " jsLog", logs);
-                            break;
-                        case 3:
-                            Log.e(TAG + " jsLog", logs);
-                            break;
-                    }
                     break;
             }
         }
