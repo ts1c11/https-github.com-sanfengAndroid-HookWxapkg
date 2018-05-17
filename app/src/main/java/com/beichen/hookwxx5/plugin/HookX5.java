@@ -5,6 +5,8 @@ import android.util.Log;
 import android.webkit.ConsoleMessage;
 import android.webkit.ValueCallback;
 
+import org.json.JSONObject;
+
 import java.lang.reflect.Field;
 import java.util.Map;
 
@@ -23,8 +25,10 @@ public class HookX5 implements IXposedHookLoadPackage {
         }
 
         ClassLoader loader = loadPackageParam.classLoader;
-        Log.e(TAG, "开始Hook微信");
+        Log.e(TAG, "开始Hook微信, 当前进程名: " + loadPackageParam.processName);
         hookLog(loadPackageParam.classLoader);
+
+
         /*************** Hook x5内核框架层 *******************/
         // 因Android使用的是x5内核,因此最终都会执行到这个地方
         Class<?> webView = XposedHelpers.findClass("com.tencent.smtt.sdk.WebView", loadPackageParam.classLoader);
@@ -35,13 +39,13 @@ public class HookX5 implements IXposedHookLoadPackage {
         XposedHelpers.findAndHookMethod(webView, "loadData", String.class, String.class, String.class, x5WebViewCallback);
         XposedHelpers.findAndHookMethod(webView, "loadDataWithBaseURL", String.class, String.class, String.class, String.class, String.class, x5WebViewCallback);
 
+
         // 这个类是在读取JS文件为字符串
         Class<?> appbrandEClass = loader.loadClass("com.tencent.mm.plugin.appbrand.e");
         XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.appcache.ap", loader, "a", appbrandEClass, String.class, appbrandCallback);
 
         // amd方法可以获取软件小程序的appId
-//        XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.page.t", loader, "amd", appbrandCallback);
-
+        // XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.page.t", loader, "amd", appbrandCallback);
     }
 
     private XC_MethodHook x5WebViewCallback = new XC_MethodHook() {
@@ -109,6 +113,10 @@ public class HookX5 implements IXposedHookLoadPackage {
         XposedHelpers.findAndHookMethod(logClass, "v", String.class, String.class, Object[].class, logCallback);
         XposedHelpers.findAndHookMethod(logClass, "k", String.class, String.class, Object[].class, logCallback);
         XposedHelpers.findAndHookMethod(logClass, "l", String.class, String.class, Object[].class, logCallback);
+
+        // 将小程序日志自定义转发到java
+        Class<?> arg0Class = loader.loadClass("com.tencent.mm.plugin.appbrand.j");
+        XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.jsapi.al", loader, "a", arg0Class, JSONObject.class, int.class, logCallback);
     }
 
     private XC_MethodHook appbrandCallback = new XC_MethodHook() {
@@ -163,7 +171,7 @@ public class HookX5 implements IXposedHookLoadPackage {
                             s = s.replace("for(var d=i.boxes,h=a+.5*InitMark.stageOffHeight,u=0;8>u;u++)if(d[u+1]>0&&t[\"hitImg\"+u].hitTestPoint(o,h)){this._mark=u+1;break}", "for(var d=i.boxes,u=0;u<8;u++)if(d[u+1]>0){this._mark=u+1;break}");
                             Log.e(TAG + "脚本替换", "替换章鱼每次必中");
                         }else{
-                            Log.e(TAG + "脚本替换", "没找到 for(var d=i.boxes,h=a+.5*InitMark.stageOffHeight,u=0;8>u;u++)if(d[u+1]>0&&t[\"hitImg\"+u].hitTestPoint(o,h)){this._mark=u+1;break} 可能是由于版本更新导致代码变化,请重新替换");
+                            Log.e(TAG + "脚本替换", "没找到打章鱼伤害,可能是由于版本更新导致代码变化,请重新替换");
                         }
 
                         // 根据 dataManager.data.stealIslands[i].crowns;来确定最富有的
@@ -173,8 +181,31 @@ public class HookX5 implements IXposedHookLoadPackage {
                             s = s.replace("e[\"island\"+n].initIslandView(i)}", "e[\"island\"+n].initIslandView(i)}var tar=0;if(dataManager.data.stealTarget.crowns==dataManager.data.stealIslands[0].crowns){tar=1;}else if(dataManager.data.stealTarget.crowns==dataManager.data.stealIslands[1].crowns){tar=2;}else{tar=3;}console.log(\"猜金币,选择: \"+tar);new TextPop(\"选择: \"+tar);");
                             Log.e(TAG + "脚本替换", "替换猜金币");
                         }else {
-                            Log.e(TAG + "脚本替换", "没找到猜金币, 可能是由于版本更新,请重新替换");
+                            Log.e(TAG + "脚本替换", "没找到猜金币,可能是由于版本更新,请重新替换");
                         }
+
+                        // 替换观看视频广告
+                        // n>-1?(InitMark.wxSharing=!0,platform.common.createRewardedVideoAd(Const.adUnitId_master,function(){sdk.sdkLogic.monsterShareSuccess(),InitMark.wxSharing=!1},function(){sdk.sdkLogic.monsterShareSuccess(),InitMark.wxSharing=!1}))
+                        // n>-1?(sdk.sdkLogic.monsterShareSuccess(),InitMark.wxSharing=!1)
+
+                        if (s.contains("n>-1?(InitMark.wxSharing=!0,platform.common.createRewardedVideoAd(Const.adUnitId_master,function(){sdk.sdkLogic.monsterShareSuccess(),InitMark.wxSharing=!1},function(){sdk.sdkLogic.monsterShareSuccess(),InitMark.wxSharing=!1}))")){
+                            s = s.replace("n>-1?(InitMark.wxSharing=!0,platform.common.createRewardedVideoAd(Const.adUnitId_master,function(){sdk.sdkLogic.monsterShareSuccess(),InitMark.wxSharing=!1},function(){sdk.sdkLogic.monsterShareSuccess(),InitMark.wxSharing=!1}))", "n>-1?(sdk.sdkLogic.monsterShareSuccess(),InitMark.wxSharing=!1)");
+                            Log.e(TAG + "脚本替换", "修改观看视频广告");
+                        }else {
+                            Log.e(TAG + "脚本替换", "没找到观看视频广告,可能是由于版本更新,请重新替换");
+                        }
+
+                        // 替换打螃蟹伤害
+                        // e.attackTitan=function(t,n,i,a,o,r){
+                        // e.attackTitan=function(t,n,i,a,o,r){if(a){i=200;}else{i=100;}
+
+                        if (s.contains("e.attackTitan=function(t,n,i,a,o,r){")){
+                            s = s.replace("e.attackTitan=function(t,n,i,a,o,r){", "e.attackTitan=function(t,n,i,a,o,r){if(a){i=200;}else{i=100;}");
+                            Log.e(TAG + "脚本替换", "修改螃蟹伤害");
+                        }else{
+                            Log.e(TAG + "脚本替换", "没找到修改螃蟹伤害,可能是由于版本更新,请重新替换");
+                        }
+
                     }
                     param.setResult(s);
                     break;
@@ -229,6 +260,10 @@ public class HookX5 implements IXposedHookLoadPackage {
                 case "w":
                     level = 2;
                     break;
+                case "a":   // 小程序打印日志
+                    level = 0x100;
+                    break;
+
             }
             switch (level){
                 case 0:
@@ -239,6 +274,25 @@ public class HookX5 implements IXposedHookLoadPackage {
                     break;
                 case 2:
                     Log.e("beichen " + arg0, format);
+                    break;
+                case 0x100:
+                    JSONObject jsonObjectArg1 = (JSONObject) param.args[1];
+                    int l = jsonObjectArg1.getInt("level");
+                    String logs = jsonObjectArg1.getString("logs");
+                    switch (l){
+                        case 0:
+                            Log.d(TAG + " jsLog", logs);
+                            break;
+                        case 1:
+                            Log.i(TAG + " jsLog", logs);
+                            break;
+                        case 2:
+                            Log.w(TAG + " jsLog", logs);
+                            break;
+                        case 3:
+                            Log.e(TAG + " jsLog", logs);
+                            break;
+                    }
                     break;
             }
         }
