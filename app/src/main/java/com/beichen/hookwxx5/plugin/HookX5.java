@@ -8,6 +8,7 @@ import android.webkit.ValueCallback;
 import org.json.JSONObject;
 
 import java.lang.reflect.Field;
+import java.util.HashMap;
 import java.util.Map;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
@@ -17,6 +18,9 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage;
 
 public class HookX5 implements IXposedHookLoadPackage {
     private final static String TAG = "beichen";
+
+    private static HashMap<String, JSONObject> maps = new HashMap<>();
+
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam loadPackageParam) throws Throwable {
 
