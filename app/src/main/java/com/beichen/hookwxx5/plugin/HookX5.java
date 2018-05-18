@@ -19,7 +19,7 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage;
 public class HookX5 implements IXposedHookLoadPackage {
     private final static String TAG = "beichen";
 
-    private static HashMap<String, JSONObject> maps = new HashMap<>();
+    private static HashMap<String, JSONObject> maps = new HashMap<>();      // 添加数据
 
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam loadPackageParam) throws Throwable {
