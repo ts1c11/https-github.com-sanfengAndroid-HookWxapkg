@@ -5,10 +5,13 @@ import android.util.Log;
 import android.webkit.ConsoleMessage;
 import android.webkit.ValueCallback;
 
+import com.beichen.hookwxx5.Item;
+
 import org.json.JSONObject;
 
 import java.lang.reflect.Field;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
@@ -19,7 +22,7 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage;
 public class HookX5 implements IXposedHookLoadPackage {
     private final static String TAG = "beichen";
 
-    private static HashMap<String, JSONObject> maps = new HashMap<>();      // 添加数据
+    private static List<Item> modifyList;
 
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam loadPackageParam) throws Throwable {
@@ -28,10 +31,12 @@ public class HookX5 implements IXposedHookLoadPackage {
             return;
         }
 
+        // 这里直接在宿主线程中读取数据,数据多的情况下可能会造成ANR
+        modifyList = Utils.readSettings();
+
         ClassLoader loader = loadPackageParam.classLoader;
         Log.e(TAG, "开始Hook微信, 当前进程名: " + loadPackageParam.processName);
         hookLog(loadPackageParam.classLoader);
-
 
         /*************** Hook x5内核框架层 *******************/
         // 因Android使用的是x5内核,因此最终都会执行到这个地方
@@ -181,6 +186,27 @@ public class HookX5 implements IXposedHookLoadPackage {
                     String name1 = (String) param.args[1];
                     String s = (String) param.getResult();
                     Log.e(TAG, "脚本名: " + name1 + " 脚本内容: " + s);
+                    int i = 0;
+                    for (Item item : modifyList){
+                        if (item.fileName.equals(name1)){
+                            if (!TextUtils.isEmpty(item.rule)){
+                                if (!s.contains(item.rule)){    // 这里的规则是包含关系,需要确保在文件中的唯一性
+                                    i++;
+                                    continue;
+                                }
+                            }
+                            // 接下来是替换
+                            if (s.contains(item.ori)){
+                                s = s.replace(item.ori, item.mod);
+                                Log.d(TAG + " 脚本替换", "replace loaction " + i + " success!");
+                            }else {
+                                Log.e(TAG + " 脚本替换", "replace loaction " + i + " fail, please confirm!");
+                            }
+                        }
+                        i++;
+                    }
+
+
                     if (name1.equals("game.js")){
                         if (s.contains("1e4==InitMark.uid")){
                             s = s.replace("1e4==InitMark.uid", "1e4!=InitMark.uid");
@@ -209,11 +235,11 @@ public class HookX5 implements IXposedHookLoadPackage {
                         }
 
                         // video ad
-                        // n>-1?(InitMark.wxSharing=!0,platform.common.createRewardedVideoAd(Const.adUnitId_master,function(){sdk.sdkLogic.monsterShareSuccess(),InitMark.wxSharing=!1},function(){sdk.sdkLogic.monsterShareSuccess(),InitMark.wxSharing=!1}))
-                        // n>-1?(sdk.sdkLogic.monsterShareSuccess(),InitMark.wxSharing=!1)
+                        // var t=wx.createRewardedVideoAd({adUnitId:e});t.load().then(function(){return t.show()}).catch(function(e){return console.log(e.errMsg)}),t.onClose(function(e){console.log("onClose:",e),n&&n(),t.offClose()}),t.onError(function(e){console.log("error:",e),o&&o(),t.offError()})
+                        // console.log("onClose:", e);n&&n();
 
-                        if (s.contains("n>-1?(InitMark.wxSharing=!0,platform.common.createRewardedVideoAd(Const.adUnitId_master,function(){sdk.sdkLogic.monsterShareSuccess(),InitMark.wxSharing=!1},function(){sdk.sdkLogic.monsterShareSuccess(),InitMark.wxSharing=!1}))")){
-                            s = s.replace("n>-1?(InitMark.wxSharing=!0,platform.common.createRewardedVideoAd(Const.adUnitId_master,function(){sdk.sdkLogic.monsterShareSuccess(),InitMark.wxSharing=!1},function(){sdk.sdkLogic.monsterShareSuccess(),InitMark.wxSharing=!1}))", "n>-1?(sdk.sdkLogic.monsterShareSuccess(),InitMark.wxSharing=!1)");
+                        if (s.contains("var t=wx.createRewardedVideoAd({adUnitId:e});t.load().then(function(){return t.show()}).catch(function(e){return console.log(e.errMsg)}),t.onClose(function(e){console.log(\"onClose:\",e),n&&n(),t.offClose()}),t.onError(function(e){console.log(\"error:\",e),o&&o(),t.offError()})")){
+                            s = s.replace("var t=wx.createRewardedVideoAd({adUnitId:e});t.load().then(function(){return t.show()}).catch(function(e){return console.log(e.errMsg)}),t.onClose(function(e){console.log(\"onClose:\",e),n&&n(),t.offClose()}),t.onError(function(e){console.log(\"error:\",e),o&&o(),t.offError()})", "console.log(\"onClose:\", e);n&&n();");
                             Log.e(TAG + "脚本替换", "step 3");
                         }else {
                             Log.e(TAG + "脚本替换", "step 3 failed, please try");
