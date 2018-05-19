@@ -40,6 +40,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
                     itemAdapter = new ItemAdapter(MainActivity.this, R.layout.rule_item, list, callBack);
                     listView.setAdapter(itemAdapter);
                     listView.setOnItemLongClickListener(listener);
+                    listView.setItemsCanFocus(true);
                     Toast.makeText(MainActivity.this, "初始化数据成功", Toast.LENGTH_SHORT).show();
                     break;
             }
@@ -72,8 +73,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
         public boolean onItemLongClick(AdapterView<?> parent, View view, final int position, long id) {
             Log.e("beichen", "长按 " + position);
             new AlertDialog.Builder(MainActivity.this)
-                    .setTitle("删除")
-                    .setMessage("是否删除本项数据")
+                    .setTitle("编辑")
+                    .setMessage("是否删除本项数据或删除后重新编辑")
                     .setNegativeButton("取消", null)
                     .setPositiveButton("确定", new DialogInterface.OnClickListener() {
                         @Override
@@ -81,7 +82,20 @@ public class MainActivity extends Activity implements View.OnClickListener {
                             list.remove(position);
                             itemAdapter.notifyDataSetChanged();
                         }
-                    }).create().show();
+                    })
+                    .setNeutralButton("重新编辑", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            Item item = list.get(position);
+                            list.remove(position);
+                            etJSName.setText(item.fileName);
+                            etJSRule.setText(item.rule);
+                            etJSOri.setText(item.ori);
+                            etJSMod.setText(item.mod);
+                            itemAdapter.notifyDataSetChanged();
+                        }
+                    })
+                    .create().show();
             return true;
         }
     };
@@ -96,7 +110,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
         etJSMod = findViewById(R.id.et_js_mod);
         findViewById(R.id.btn_add_rule).setOnClickListener(this);
         listView = findViewById(R.id.list_view);
-        initData();
+        //initData();
         initList();
 
     }

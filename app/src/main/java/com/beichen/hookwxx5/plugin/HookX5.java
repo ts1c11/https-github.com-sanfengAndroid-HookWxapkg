@@ -30,10 +30,9 @@ public class HookX5 implements IXposedHookLoadPackage {
         if (!loadPackageParam.packageName.equals("com.tencent.mm")){
             return;
         }
-
         // 这里直接在宿主线程中读取数据,数据多的情况下可能会造成ANR
         modifyList = Utils.readSettings();
-
+        Log.d(TAG, "共获取修改项: " + modifyList.size() + "项");
         ClassLoader loader = loadPackageParam.classLoader;
         Log.e(TAG, "开始Hook微信, 当前进程名: " + loadPackageParam.processName);
         hookLog(loadPackageParam.classLoader);
@@ -205,57 +204,21 @@ public class HookX5 implements IXposedHookLoadPackage {
                         }
                         i++;
                     }
-
-
-                    if (name1.equals("game.js")){
-                        if (s.contains("1e4==InitMark.uid")){
-                            s = s.replace("1e4==InitMark.uid", "1e4!=InitMark.uid");
-                            Log.e(TAG + "脚本替换", "open log");
-                        }else {
-                            Log.e(TAG + "脚本替换", "open log failed, please try");
-                        }
-                        // attach 100%
-                        // for(var d=i.boxes,h=a+.5*InitMark.stageOffHeight,u=0;8>u;u++)if(d[u+1]>0&&t["hitImg"+u].hitTestPoint(o,h)){this._mark=u+1;break}
-                        // for(var d=i.boxes,u=0;u<8;u++)if(d[u+1]>0){this._mark=u+1;break}
-
-                        if (s.contains("for(var d=i.boxes,h=a+.5*InitMark.stageOffHeight,u=0;8>u;u++)if(d[u+1]>0&&t[\"hitImg\"+u].hitTestPoint(o,h)){this._mark=u+1;break}")){
-                            s = s.replace("for(var d=i.boxes,h=a+.5*InitMark.stageOffHeight,u=0;8>u;u++)if(d[u+1]>0&&t[\"hitImg\"+u].hitTestPoint(o,h)){this._mark=u+1;break}", "for(var d=i.boxes,u=0;u<8;u++)if(d[u+1]>0){this._mark=u+1;break}");
-                            Log.e(TAG + "脚本替换", "step 1");
-                        }else{
-                            Log.e(TAG + "脚本替换", "step 1 failed");
-                        }
-
-                        // e["island"+n].initIslandView(i)}
-                        // e["island"+n].initIslandView(i)}var tar=0;if(dataManager.data.stealTarget.crowns==dataManager.data.stealIslands[0].crowns){tar=1;}else if(dataManager.data.stealTarget.crowns==dataManager.data.stealIslands[1].crowns){tar=2;}else{tar=3;}console.log("猜金币,选择: "+tar);new TextPop("选择: "+tar);
-                        if (s.contains("e[\"island\"+n].initIslandView(i)}")){
-                            s = s.replace("e[\"island\"+n].initIslandView(i)}", "e[\"island\"+n].initIslandView(i)}var tar=0;if(dataManager.data.stealTarget.crowns==dataManager.data.stealIslands[0].crowns){tar=1;}else if(dataManager.data.stealTarget.crowns==dataManager.data.stealIslands[1].crowns){tar=2;}else{tar=3;}console.log(\"猜金币,选择: \"+tar);new TextPop(\"选择: \"+tar);");
-                            Log.e(TAG + "脚本替换", "step 2");
-                        }else {
-                            Log.e(TAG + "脚本替换", "step 2 failed, please try");
-                        }
-
-                        // video ad
-                        // var t=wx.createRewardedVideoAd({adUnitId:e});t.load().then(function(){return t.show()}).catch(function(e){return console.log(e.errMsg)}),t.onClose(function(e){console.log("onClose:",e),n&&n(),t.offClose()}),t.onError(function(e){console.log("error:",e),o&&o(),t.offError()})
-                        // console.log("onClose:", e);n&&n();
-
-                        if (s.contains("var t=wx.createRewardedVideoAd({adUnitId:e});t.load().then(function(){return t.show()}).catch(function(e){return console.log(e.errMsg)}),t.onClose(function(e){console.log(\"onClose:\",e),n&&n(),t.offClose()}),t.onError(function(e){console.log(\"error:\",e),o&&o(),t.offError()})")){
-                            s = s.replace("var t=wx.createRewardedVideoAd({adUnitId:e});t.load().then(function(){return t.show()}).catch(function(e){return console.log(e.errMsg)}),t.onClose(function(e){console.log(\"onClose:\",e),n&&n(),t.offClose()}),t.onError(function(e){console.log(\"error:\",e),o&&o(),t.offError()})", "console.log(\"onClose:\", e);n&&n();");
-                            Log.e(TAG + "脚本替换", "step 3");
-                        }else {
-                            Log.e(TAG + "脚本替换", "step 3 failed, please try");
-                        }
-
-                        // hurt 100/200
-                        // e.attackTitan=function(t,n,i,a,o,r){
-                        // e.attackTitan=function(t,n,i,a,o,r){if(a){i=200;}else{i=100;}
-
-                        if (s.contains("e.attackTitan=function(t,n,i,a,o,r){")){
-                            s = s.replace("e.attackTitan=function(t,n,i,a,o,r){", "e.attackTitan=function(t,n,i,a,o,r){if(a){i=200;}else{i=100;}");
-                            Log.e(TAG + "脚本替换", "step 4");
-                        }else{
-                            Log.e(TAG + "脚本替换", "step 4 failed, please try");
-                        }
-                    }
+//                     attach 100%
+//                     for(var d=i.boxes,h=a+.5*InitMark.stageOffHeight,u=0;8>u;u++)if(d[u+1]>0&&t["hitImg"+u].hitTestPoint(o,h)){this._mark=u+1;break}
+//                     for(var d=i.boxes,u=0;u<8;u++)if(d[u+1]>0){this._mark=u+1;break}
+//
+//                     guess 100%
+//                     e["island"+n].initIslandView(i)}
+//                     e["island"+n].initIslandView(i)}var tar=0;if(dataManager.data.stealTarget.crowns==dataManager.data.stealIslands[0].crowns){tar=1;}else if(dataManager.data.stealTarget.crowns==dataManager.data.stealIslands[1].crowns){tar=2;}else{tar=3;}console.log("猜金币,选择: "+tar);new TextPop("选择: "+tar);
+//
+//                     video ad
+//                     var t=wx.createRewardedVideoAd({adUnitId:e});t.load().then(function(){return t.show()}).catch(function(e){return console.log(e.errMsg)}),t.onClose(function(e){console.log("onClose:",e),n&&n(),t.offClose()}),t.onError(function(e){console.log("error:",e),o&&o(),t.offError()})
+//                     console.log("onClose:", e);n&&n();
+//
+//                     hurt 100/200
+//                     e.attackTitan=function(t,n,i,a,o,r){
+//                     e.attackTitan=function(t,n,i,a,o,r){if(a){i=200;}else{i=100;}
                     param.setResult(s);
                     break;
             }

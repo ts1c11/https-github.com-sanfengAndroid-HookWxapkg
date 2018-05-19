@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:descendantFocusability="blocksDescendants">
+    android:descendantFocusability="afterDescendants">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -19,14 +19,12 @@
             android:id="@+id/tv_file_name"
             android:layout_width="match_parent"
             android:layout_height="25dp"
-            android:ellipsize="marquee"
-            android:focusable="true"
-            android:focusableInTouchMode="true"
+            android:ellipsize="end"
             android:gravity="left"
-            android:marqueeRepeatLimit="marquee_forever"
             android:singleLine="true"
             android:textSize="19dp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            />
     </LinearLayout>
     <LinearLayout
         android:layout_width="match_parent"
@@ -43,13 +41,11 @@
             android:id="@+id/tv_rule"
             android:layout_width="match_parent"
             android:layout_height="21dp"
-            android:ellipsize="marquee"
-            android:focusable="true"
-            android:focusableInTouchMode="true"
+            android:ellipsize="end"
             android:gravity="left"
-            android:marqueeRepeatLimit="marquee_forever"
             android:singleLine="true"
-            android:textSize="16dp" />
+            android:textSize="16dp"
+            />
     </LinearLayout>
     <LinearLayout
         android:layout_width="match_parent"
@@ -66,13 +62,12 @@
             android:id="@+id/tv_ori"
             android:layout_width="match_parent"
             android:layout_height="19dp"
-            android:ellipsize="marquee"
-            android:focusable="true"
+            android:ellipsize="end"
             android:focusableInTouchMode="true"
             android:gravity="left"
-            android:marqueeRepeatLimit="marquee_forever"
             android:singleLine="true"
-            android:textSize="14dp" />
+            android:textSize="14dp"
+           />
     </LinearLayout>
     <LinearLayout
         android:layout_width="match_parent"
@@ -89,12 +84,10 @@
             android:id="@+id/tv_mod"
             android:layout_width="match_parent"
             android:layout_height="19dp"
-            android:ellipsize="marquee"
-            android:focusable="true"
-            android:focusableInTouchMode="true"
+            android:ellipsize="end"
             android:gravity="left"
-            android:marqueeRepeatLimit="marquee_forever"
             android:singleLine="true"
-            android:textSize="14dp" />
+            android:textSize="14dp"
+            />
     </LinearLayout>
 </LinearLayout>
