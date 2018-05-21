@@ -21,6 +21,7 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage;
 
 public class HookX5 implements IXposedHookLoadPackage {
     private final static String TAG = "beichen";
+    private final static String WX_TAG = "wxLog";
 
     private static List<Item> modifyList;
 
@@ -184,26 +185,29 @@ public class HookX5 implements IXposedHookLoadPackage {
                 case "com.tencent.mm.plugin.appbrand.appcache.ap.a":
                     String name1 = (String) param.args[1];
                     String s = (String) param.getResult();
-                    Log.e(TAG, "脚本名: " + name1 + " 脚本内容: " + s);
+                    Log.e(TAG, "读取js脚本, 脚本名: " + name1 + " 脚本内容: " + s);
                     int i = 0;
-                    for (Item item : modifyList){
-                        if (item.fileName.equals(name1)){
-                            if (!TextUtils.isEmpty(item.rule)){
-                                if (!s.contains(item.rule)){    // 这里的规则是包含关系,需要确保在文件中的唯一性
-                                    i++;
-                                    continue;
+                    if (modifyList != null && modifyList.size() > 0){
+                        for (Item item : modifyList){
+                            if (item.fileName.equals(name1)){
+                                if (!TextUtils.isEmpty(item.rule)){
+                                    if (!s.contains(item.rule)){    // 这里的规则是包含关系,需要确保在文件中的唯一性
+                                        i++;
+                                        continue;
+                                    }
+                                }
+                                // 接下来是替换
+                                if (s.contains(item.ori)){
+                                    s = s.replace(item.ori, item.mod);
+                                    Log.d(TAG + " 脚本替换", "replace loaction " + i + " success!");
+                                }else {
+                                    Log.e(TAG + " 脚本替换", "replace loaction " + i + " fail, please confirm!");
                                 }
                             }
-                            // 接下来是替换
-                            if (s.contains(item.ori)){
-                                s = s.replace(item.ori, item.mod);
-                                Log.d(TAG + " 脚本替换", "replace loaction " + i + " success!");
-                            }else {
-                                Log.e(TAG + " 脚本替换", "replace loaction " + i + " fail, please confirm!");
-                            }
+                            i++;
                         }
-                        i++;
                     }
+
 //                     attach 100%
 //                     for(var d=i.boxes,h=a+.5*InitMark.stageOffHeight,u=0;8>u;u++)if(d[u+1]>0&&t["hitImg"+u].hitTestPoint(o,h)){this._mark=u+1;break}
 //                     for(var d=i.boxes,u=0;u<8;u++)if(d[u+1]>0){this._mark=u+1;break}
@@ -272,20 +276,16 @@ public class HookX5 implements IXposedHookLoadPackage {
                 case "w":
                     level = 2;
                     break;
-                case "a":   // 小程序打印日志
-                    level = 0x100;
-                    break;
-
             }
             switch (level){
                 case 0:
-                    Log.i("beichen " + arg0, format);
+                    Log.i(WX_TAG + " " + arg0, format);
                     break;
                 case 1:
-                    Log.d("beichen " + arg0, format);
+                    Log.d(WX_TAG + " " + arg0, format);
                     break;
                 case 2:
-                    Log.e("beichen " + arg0, format);
+                    Log.e(WX_TAG + " " + arg0, format);
                     break;
             }
         }
