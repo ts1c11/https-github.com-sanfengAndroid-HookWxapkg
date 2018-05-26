@@ -82,10 +82,17 @@
         android:layout_height="wrap_content"
         android:text="已保存规则:"
         android:textSize="23dp"/>
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/btn_open_dialog"
+        android:text="打开Dialog"/>
+
     <ListView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:id="@+id/list_view">
     </ListView>
+
 
 </LinearLayout>

@@ -14,6 +14,7 @@ import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import com.beichen.hookwxx5.plugin.MyDialog;
 import com.beichen.hookwxx5.plugin.Utils;
 
 import java.util.ArrayList;
@@ -109,10 +110,11 @@ public class MainActivity extends Activity implements View.OnClickListener {
         etJSOri = findViewById(R.id.et_js_ori);
         etJSMod = findViewById(R.id.et_js_mod);
         findViewById(R.id.btn_add_rule).setOnClickListener(this);
+        findViewById(R.id.btn_open_dialog).setOnClickListener(this);
         listView = findViewById(R.id.list_view);
         //initData();
         initList();
-
+        
     }
 
     public void initData(){
@@ -161,6 +163,10 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 list.add(item);
                 itemAdapter.notifyDataSetChanged();
                 break;
+            case R.id.btn_open_dialog:
+//
+//                break;  MyDialog dialog = new MyDialog(this);
+////                dialog.show();
         }
     }
     public interface DataCallBack{

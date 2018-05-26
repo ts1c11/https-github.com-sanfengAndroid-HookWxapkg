@@ -1,8 +1,10 @@
 package com.beichen.hookwxx5.plugin;
 
+import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.TextUtils;
 import android.util.Log;
-import android.webkit.ConsoleMessage;
 import android.webkit.ValueCallback;
 
 import com.beichen.hookwxx5.Item;
@@ -10,7 +12,7 @@ import com.beichen.hookwxx5.Item;
 import org.json.JSONObject;
 
 import java.lang.reflect.Field;
-import java.util.HashMap;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 
@@ -19,43 +21,15 @@ import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
 
-public class HookX5 implements IXposedHookLoadPackage {
+public class HookX5 implements IXposedHookLoadPackage, InputCallback {
     private final static String TAG = "beichen";
-    private final static String WX_TAG = "wxLog";
+    private final static String INJECT_TAG = "beichen.Inject";
+    private final static String JS_TAG = "beichen.jsLog";
+    private final static String WX_TAG = "beichen.wxLog";
+    public static Object ibvObj = null;                             // 注入脚本时需要的对象
+    private XC_LoadPackage.LoadPackageParam mLoadPackageParam;
+    private static List<Item> modifyList;                           // 保存所有脚本替换数据
 
-    private static List<Item> modifyList;
-
-    @Override
-    public void handleLoadPackage(XC_LoadPackage.LoadPackageParam loadPackageParam) throws Throwable {
-
-        if (!loadPackageParam.packageName.equals("com.tencent.mm")){
-            return;
-        }
-        // 这里直接在宿主线程中读取数据,数据多的情况下可能会造成ANR
-        modifyList = Utils.readSettings();
-        Log.d(TAG, "共获取修改项: " + modifyList.size() + "项");
-        ClassLoader loader = loadPackageParam.classLoader;
-        Log.e(TAG, "开始Hook微信, 当前进程名: " + loadPackageParam.processName);
-        hookLog(loadPackageParam.classLoader);
-
-        /*************** Hook x5内核框架层 *******************/
-        // 因Android使用的是x5内核,因此最终都会执行到这个地方
-        Class<?> webView = XposedHelpers.findClass("com.tencent.smtt.sdk.WebView", loadPackageParam.classLoader);
-        XposedHelpers.findAndHookMethod(webView, "loadUrl", String.class,x5WebViewCallback);
-        XposedHelpers.findAndHookMethod(webView, "loadUrl", String.class, Map.class, x5WebViewCallback);
-        Class<?> valueCallBackClass = loader.loadClass("com.tencent.smtt.sdk.ab");
-        XposedHelpers.findAndHookMethod(webView, "evaluateJavascript", String.class, valueCallBackClass, x5WebViewCallback);
-        XposedHelpers.findAndHookMethod(webView, "loadData", String.class, String.class, String.class, x5WebViewCallback);
-        XposedHelpers.findAndHookMethod(webView, "loadDataWithBaseURL", String.class, String.class, String.class, String.class, String.class, x5WebViewCallback);
-
-
-        // 这个类是在读取JS文件为字符串
-        Class<?> appbrandEClass = loader.loadClass("com.tencent.mm.plugin.appbrand.e");
-        XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.appcache.ap", loader, "a", appbrandEClass, String.class, appbrandCallback);
-
-        // amd方法可以获取软件小程序的appId
-        // XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.page.t", loader, "amd", appbrandCallback);
-    }
 
     private XC_MethodHook x5WebViewCallback = new XC_MethodHook() {
         @Override
@@ -73,7 +47,9 @@ public class HookX5 implements IXposedHookLoadPackage {
                     break;
                 case "com.tencent.smtt.sdk.WebView.evaluateJavascript":
                     Log.e(TAG, "evaluateJavascript 堆栈", new Exception());
-                    resolveJS(param);
+                    String js = (String) param.args[0];
+                    ValueCallback callback = (ValueCallback) param.args[1];
+                    Log.e(TAG, "evaluateJavascript JS : " + js);
                     break;
                 case "com.tencent.smtt.sdk.WebView.loadData":
                     Log.e(TAG, "X5 Hook loadData(String, String, String) 方法之前", new Exception());
@@ -96,66 +72,11 @@ public class HookX5 implements IXposedHookLoadPackage {
         }
     };
 
-    public void hookXWeb(ClassLoader loader) throws Exception{
-        Class<?> cls = loader.loadClass("com.tencent.xweb.j");
-        XposedHelpers.findAndHookMethod(cls, "onConsoleMessage", ConsoleMessage.class, webCallback);
-        XposedHelpers.findAndHookMethod("com.tencent.smtt.export.external.proxy.ProxyWebChromeClient", loader, "onConsoleMessage", String.class, int.class, String.class, webCallback);
-        XposedHelpers.findAndHookMethod("com.tencent.smtt.export.external.proxy.ProxyWebChromeClient", loader, "onConsoleMessage", loader.loadClass("com.tencent.smtt.export.external.interfaces.ConsoleMessage"), webCallback);
-        XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.game.gamewebview.e.b$a", loader, "onConsoleMessage", ConsoleMessage.class, webCallback);
-        XposedHelpers.findAndHookMethod("com.tencent.xweb.sys.SysWebView$1", loader, "onConsoleMessage", ConsoleMessage.class, webCallback);
-    }
-
-    private XC_MethodHook webCallback = new XC_MethodHook() {
-        @Override
-        protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-            super.beforeHookedMethod(param);
-        }
-    };
-
-    public void hookLog(ClassLoader loader) throws Exception{
-        Class<?> logClass = loader.loadClass("com.tencent.mm.sdk.platformtools.w");
-        XposedHelpers.findAndHookMethod(logClass, "f", String.class, String.class, Object[].class, logCallback);
-        XposedHelpers.findAndHookMethod(logClass, "e", String.class, String.class, Object[].class, logCallback);
-        XposedHelpers.findAndHookMethod(logClass, "w", String.class, String.class, Object[].class, logCallback);
-        XposedHelpers.findAndHookMethod(logClass, "i", String.class, String.class, Object[].class, logCallback);
-        XposedHelpers.findAndHookMethod(logClass, "d", String.class, String.class, Object[].class, logCallback);
-        XposedHelpers.findAndHookMethod(logClass, "v", String.class, String.class, Object[].class, logCallback);
-        XposedHelpers.findAndHookMethod(logClass, "k", String.class, String.class, Object[].class, logCallback);
-        XposedHelpers.findAndHookMethod(logClass, "l", String.class, String.class, Object[].class, logCallback);
-
-        // 将小程序日志自定义转发到java
-        Class<?> arg0Class = loader.loadClass("com.tencent.mm.plugin.appbrand.j");
-        XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.jsapi.al", loader, "a", arg0Class, JSONObject.class, int.class, new XC_MethodHook() {
-            @Override
-            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                JSONObject jsonObjectArg1 = (JSONObject) param.args[1];
-                int l = jsonObjectArg1.getInt("level");
-                String logs = jsonObjectArg1.getString("logs");
-                switch (l){
-                    case 0:
-                        Log.d(TAG + " jsLog", logs);
-                        break;
-                    case 1:
-                        Log.i(TAG + " jsLog", logs);
-                        break;
-                    case 2:
-                        Log.w(TAG + " jsLog", logs);
-                        break;
-                    case 3:
-                        Log.e(TAG + " jsLog", logs);
-                        break;
-                }
-            }
-        });
-    }
-
     private XC_MethodHook appbrandCallback = new XC_MethodHook() {
         @Override
         protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
 
             switch (param.method.getDeclaringClass().getName() + "." + param.method.getName()){
-                case "com.tencent.mm.plugin.appbrand.page.t.amd":
-                    break;
                 case "com.tencent.mm.plugin.appbrand.appcache.ap.a":
                     String name = (String) param.args[1];
                     //Log.e(TAG, "ap.a 堆栈:  " + name, new Exception());
@@ -168,20 +89,6 @@ public class HookX5 implements IXposedHookLoadPackage {
             Log.e(TAG, "afterHookedMethod: " + param.method.getDeclaringClass().getName() + "." + param.method.getName());
             String name = param.method.getDeclaringClass().getName() + "." + param.method.getName();
             switch (name){
-                case "com.tencent.mm.plugin.appbrand.page.t.amd":
-                    String result = (String) param.getResult();
-                    Log.e(TAG, "amd: " + result);
-                    try {
-                        Field mAppIdField = param.thisObject.getClass().getDeclaredField("mAppId");
-                        mAppIdField.setAccessible(true);
-                        String appid = (String) mAppIdField.get(param.thisObject);
-                        if (!TextUtils.isEmpty(appid)){
-                            Log.e(TAG, "appid: " + appid + " hashCode: " + appid.hashCode());
-                        }
-                    }catch (Exception e){
-                        Log.e(TAG, "异常", e);
-                    }
-                    break;
                 case "com.tencent.mm.plugin.appbrand.appcache.ap.a":
                     String name1 = (String) param.args[1];
                     String s = (String) param.getResult();
@@ -230,11 +137,144 @@ public class HookX5 implements IXposedHookLoadPackage {
         }
     };
 
-    private void resolveJS(XC_MethodHook.MethodHookParam param){
-        String js = (String) param.args[0];
-        ValueCallback callback = (ValueCallback) param.args[1];
-        Log.e(TAG, "evaluateJavascript JS : " + js);
+
+    @Override
+    public void handleLoadPackage(XC_LoadPackage.LoadPackageParam loadPackageParam) throws Throwable {
+        if (!loadPackageParam.packageName.equals("com.tencent.mm")){
+            return;
+        }
+        mLoadPackageParam = loadPackageParam;
+        // 这里直接在宿主线程中读取数据,数据多的情况下可能会造成ANR
+        modifyList = Utils.readSettings();
+        Log.d(TAG, "共获取修改项: " + modifyList.size() + "项");
+        ClassLoader loader = loadPackageParam.classLoader;
+        Log.e(TAG, "开始Hook微信, 当前进程名: " + loadPackageParam.processName);
+
+        /*************** Hook x5内核框架层 *******************/
+        // 因Android使用的是x5内核,因此最终都会执行到这个地方
+        Class<?> webView = XposedHelpers.findClass("com.tencent.smtt.sdk.WebView", loadPackageParam.classLoader);
+        XposedHelpers.findAndHookMethod(webView, "loadUrl", String.class,x5WebViewCallback);
+        XposedHelpers.findAndHookMethod(webView, "loadUrl", String.class, Map.class, x5WebViewCallback);
+        Class<?> valueCallBackClass = loader.loadClass("com.tencent.smtt.sdk.ab");
+        XposedHelpers.findAndHookMethod(webView, "evaluateJavascript", String.class, valueCallBackClass, x5WebViewCallback);
+        XposedHelpers.findAndHookMethod(webView, "loadData", String.class, String.class, String.class, x5WebViewCallback);
+        XposedHelpers.findAndHookMethod(webView, "loadDataWithBaseURL", String.class, String.class, String.class, String.class, String.class, x5WebViewCallback);
+
+        // 这个类是在读取JS文件为字符串
+        Class<?> appbrandEClass = loader.loadClass("com.tencent.mm.plugin.appbrand.e");
+        XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.appcache.ap", loader, "a", appbrandEClass, String.class, appbrandCallback);
+
+        // hook 微信log和小程序log
+        hookLog(loadPackageParam.classLoader);
+        // hook 微信小游戏添加注入功能
+        hookInject(loadPackageParam);
     }
+
+
+
+
+    private XC_MethodHook injectCallback = new XC_MethodHook() {
+        @Override
+        protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+            String name = param.method.getDeclaringClass().getName() + "." + param.method.getName();
+            switch (name){
+                case "com.tencent.mm.plugin.appbrand.e$15.b":            // 只要在这里修改掉传入的AppBrandSysConfig即可打开调试功能
+                    Class<?> appBrandSysConfigClass = param.method.getDeclaringClass().getClassLoader().loadClass("com.tencent.mm.plugin.appbrand.config.AppBrandSysConfig");
+                    Class<?> wxaPkgWrappingInfoClass = param.method.getDeclaringClass().getClassLoader().loadClass("com.tencent.mm.plugin.appbrand.appcache.WxaPkgWrappingInfo");
+                    Object arg0 = param.args[0];
+                    if (arg0 == null){
+                        Log.e(INJECT_TAG, "传入的AppBrandSysConfig为空");     // 正常情况下是不为空的
+                        break;
+                    }
+                    Field iyIField = appBrandSysConfigClass.getDeclaredField("iyI");
+                    iyIField.setAccessible(true);
+                    boolean iyI = iyIField.getBoolean(arg0);
+                    Field izvField = appBrandSysConfigClass.getField("izv");
+                    izvField.setAccessible(true);
+                    Object izvObj = izvField.get(arg0);
+                    Field iqsField = wxaPkgWrappingInfoClass.getDeclaredField("iqs");
+                    iqsField.setAccessible(true);
+                    int iqs = iqsField.getInt(izvObj);
+                    Log.d(INJECT_TAG, "原始AppBrandSysConfig.iyI=" + Boolean.toString(iyI) + " 原始WxaPkgWrappingInfo.iqs=" + iqs);
+                    iyIField.set(arg0, false);
+                    if (iqs == 0){
+                        iqsField.set(izvObj, 1);
+                    }
+                    Log.e(INJECT_TAG, "修改AppBrandSysConfig配置,开启调试功能");
+                    break;
+                case "com.tencent.mm.sdk.a.b.chT":       // 这个函数在小游戏菜单中影响了 "appId: xxxxxx", "显示调试信息", "离开" 共三个菜单,而在其它地方调用也比较多,因此需要过滤下
+                    Throwable throwable = new Throwable();
+                    StackTraceElement[] elements = throwable.getStackTrace();
+                    if (elements.length > 4){
+                        String s = elements[3].getClassName() + "." + elements[3].getMethodName();
+                        switch (s){
+                            case "com.tencent.mm.plugin.appbrand.menu.j.a":        // 显示调试信息
+                            case "com.tencent.mm.plugin.appbrand.menu.c.a":        // 显示 appId
+                                // case "com.tencent.mm.plugin.appbrand.menu.g.a":        // 离开菜单
+                            case "com.tencent.mm.plugin.appbrand.page.p.a":
+                                Log.e(INJECT_TAG, "开启小游戏 appId 菜单项");
+                                param.setResult(true);
+                                break;
+                        }
+                    }
+                    break;
+                case "com.tencent.mm.plugin.appbrand.menu.h.a":
+                    Log.d(TAG, "Inject 修改小游戏\"转发\"菜单");
+                    Class<?> nClass = param.method.getDeclaringClass().getClassLoader().loadClass("com.tencent.mm.ui.base.n");
+                    Method fMethod = nClass.getDeclaredMethod("f", int.class, CharSequence.class);
+                    fMethod.setAccessible(true);
+                    Object arg2 = param.args[2];
+                    fMethod.invoke(arg2, 1, "注入脚本");
+                    param.setResult(null);
+                    break;
+                default:
+                    break;
+            }
+
+        }
+    };
+
+
+    /**
+     *  修改微信小游戏的功能菜单,主要将"转发"功能替换为脚本注入,开启小游戏调试功能
+     *
+     * @param loadPackageParam
+     * @throws ClassNotFoundException
+     */
+    private void hookInject(XC_LoadPackage.LoadPackageParam loadPackageParam) throws ClassNotFoundException {
+//        XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.page.p$33", loadPackageParam.classLoader, "onClick", View.class, injectCallback);
+        Class<?> appBrandSysConfigClass = loadPackageParam.classLoader.loadClass("com.tencent.mm.plugin.appbrand.config.AppBrandSysConfig");
+        XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.e$15", loadPackageParam.classLoader, "b", appBrandSysConfigClass, injectCallback);
+        // Hook菜单开放appid显示
+        XposedHelpers.findAndHookMethod("com.tencent.mm.sdk.a.b", loadPackageParam.classLoader, "chT", injectCallback);
+        // Hook小游戏修改 "转发" 菜单
+        Class<?> pClass = loadPackageParam.classLoader.loadClass("com.tencent.mm.plugin.appbrand.page.p");
+        Class<?> lClass = loadPackageParam.classLoader.loadClass("com.tencent.mm.plugin.appbrand.menu.l");
+        Class<?> nClass = loadPackageParam.classLoader.loadClass("com.tencent.mm.ui.base.n");
+        XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.menu.h", loadPackageParam.classLoader, "a", Context.class, pClass, nClass, String.class, injectCallback);
+        XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.menu.h", loadPackageParam.classLoader, "a", Context.class, pClass, String.class, lClass, new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                Log.d(INJECT_TAG, "修改原始 \"转发\" 菜单点击事件");
+                Context context = (Context) param.args[0];
+                MyDialog dialog = new MyDialog(context, HookX5.this);
+                dialog.show();
+                param.setResult(null);
+            }
+        });
+
+        XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.game.d", loadPackageParam.classLoader, "aaK", new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                Log.e(INJECT_TAG, "d.aaK() 方法已执行,保存ibv对象, 便于后面js注入");
+                ibvObj = param.getResult();
+            }
+        });
+    }
+
+
+
+
 
 
     private XC_MethodHook logCallback = new XC_MethodHook() {
@@ -288,6 +328,78 @@ public class HookX5 implements IXposedHookLoadPackage {
                     Log.e(WX_TAG + " " + arg0, format);
                     break;
             }
+        }
+    };
+
+
+    public void hookLog(ClassLoader loader) throws Exception{
+        Class<?> logClass = loader.loadClass("com.tencent.mm.sdk.platformtools.w");
+        XposedHelpers.findAndHookMethod(logClass, "f", String.class, String.class, Object[].class, logCallback);
+        XposedHelpers.findAndHookMethod(logClass, "e", String.class, String.class, Object[].class, logCallback);
+        XposedHelpers.findAndHookMethod(logClass, "w", String.class, String.class, Object[].class, logCallback);
+        XposedHelpers.findAndHookMethod(logClass, "i", String.class, String.class, Object[].class, logCallback);
+        XposedHelpers.findAndHookMethod(logClass, "d", String.class, String.class, Object[].class, logCallback);
+        XposedHelpers.findAndHookMethod(logClass, "v", String.class, String.class, Object[].class, logCallback);
+        XposedHelpers.findAndHookMethod(logClass, "k", String.class, String.class, Object[].class, logCallback);
+        XposedHelpers.findAndHookMethod(logClass, "l", String.class, String.class, Object[].class, logCallback);
+
+        // 将小程序日志自定义转发到java
+        Class<?> arg0Class = loader.loadClass("com.tencent.mm.plugin.appbrand.j");
+        XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.jsapi.al", loader, "a", arg0Class, JSONObject.class, int.class, new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                JSONObject jsonObjectArg1 = (JSONObject) param.args[1];
+                int l = jsonObjectArg1.getInt("level");
+                String logs = jsonObjectArg1.getString("logs");
+                switch (l){
+                    case 0:
+                        Log.d(JS_TAG, logs);
+                        break;
+                    case 1:
+                        Log.i(JS_TAG, logs);
+                        break;
+                    case 2:
+                        Log.w(JS_TAG, logs);
+                        break;
+                    case 3:
+                        Log.e(JS_TAG, logs);
+                        break;
+                }
+            }
+        });
+    }
+
+
+
+
+    @Override
+    public void success(Context context, final String js) {
+        // 这里注入js代码
+        if (ibvObj == null){
+            Log.e(INJECT_TAG, "当前环境错误,无法执行注入");
+            return;
+        }
+        Handler handler = new Handler(Looper.getMainLooper());
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Log.e(INJECT_TAG, "主进程开始注入代码: " + js);
+                    Class<?> gClass = mLoadPackageParam.classLoader.loadClass("com.tencent.mm.plugin.appbrand.game.g");
+                    Method evaluateJavascriptMethod = gClass.getDeclaredMethod("evaluateJavascript", String.class, ValueCallback.class);
+                    evaluateJavascriptMethod.setAccessible(true);
+                    evaluateJavascriptMethod.invoke(ibvObj, js, valueCallback);
+                }catch (Exception e){
+                    Log.e(INJECT_TAG, "注入错误", e);
+                }
+            }
+        });
+    }
+
+    private ValueCallback<String> valueCallback = new ValueCallback<String>() {
+        @Override
+        public void onReceiveValue(String value) {
+            Log.e(INJECT_TAG, "注入结果: " + value);
         }
     };
 }
