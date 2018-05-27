@@ -7,12 +7,17 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.webkit.ValueCallback;
 
-import com.beichen.hookwxx5.Item;
+import com.beichen.hookwxx5.data.InjectItem;
+import com.beichen.hookwxx5.data.ReplaceItem;
+import com.beichen.hookwxx5.widget.ChoiceDialog;
+import com.beichen.hookwxx5.widget.MyDialog;
 
 import org.json.JSONObject;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -21,14 +26,17 @@ import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
 
-public class HookX5 implements IXposedHookLoadPackage, InputCallback {
+public class HookX5 implements IXposedHookLoadPackage, ChoicesCallback {
     private final static String TAG = "beichen";
     private final static String INJECT_TAG = "beichen.Inject";
     private final static String JS_TAG = "beichen.jsLog";
     private final static String WX_TAG = "beichen.wxLog";
     public static Object ibvObj = null;                             // 注入脚本时需要的对象
     private XC_LoadPackage.LoadPackageParam mLoadPackageParam;
-    private static List<Item> modifyList;                           // 保存所有脚本替换数据
+    private static List<ReplaceItem> modifyList;                           // 保存所有脚本替换数据
+    private static List<InjectItem> injectItemList = null;
+    private static String gameName;
+    private static String appId;
 
 
     private XC_MethodHook x5WebViewCallback = new XC_MethodHook() {
@@ -95,17 +103,17 @@ public class HookX5 implements IXposedHookLoadPackage, InputCallback {
                     Log.e(TAG, "读取js脚本, 脚本名: " + name1 + " 脚本内容: " + s);
                     int i = 0;
                     if (modifyList != null && modifyList.size() > 0){
-                        for (Item item : modifyList){
-                            if (item.fileName.equals(name1)){
-                                if (!TextUtils.isEmpty(item.rule)){
-                                    if (!s.contains(item.rule)){    // 这里的规则是包含关系,需要确保在文件中的唯一性
+                        for (ReplaceItem replaceItem : modifyList){
+                            if (replaceItem.fileName.equals(name1)){
+                                if (!TextUtils.isEmpty(replaceItem.rule)){
+                                    if (!s.contains(replaceItem.rule)){    // 这里的规则是包含关系,需要确保在文件中的唯一性
                                         i++;
                                         continue;
                                     }
                                 }
                                 // 接下来是替换
-                                if (s.contains(item.ori)){
-                                    s = s.replace(item.ori, item.mod);
+                                if (s.contains(replaceItem.ori)){
+                                    s = s.replace(replaceItem.ori, replaceItem.mod);
                                     Log.d(TAG + " 脚本替换", "replace loaction " + i + " success!");
                                 }else {
                                     Log.e(TAG + " 脚本替换", "replace loaction " + i + " fail, please confirm!");
@@ -145,7 +153,7 @@ public class HookX5 implements IXposedHookLoadPackage, InputCallback {
         }
         mLoadPackageParam = loadPackageParam;
         // 这里直接在宿主线程中读取数据,数据多的情况下可能会造成ANR
-        modifyList = Utils.readSettings();
+        modifyList = Utils.readReplaceSettings();
         Log.d(TAG, "共获取修改项: " + modifyList.size() + "项");
         ClassLoader loader = loadPackageParam.classLoader;
         Log.e(TAG, "开始Hook微信, 当前进程名: " + loadPackageParam.processName);
@@ -192,15 +200,21 @@ public class HookX5 implements IXposedHookLoadPackage, InputCallback {
                     Field izvField = appBrandSysConfigClass.getField("izv");
                     izvField.setAccessible(true);
                     Object izvObj = izvField.get(arg0);
+                    Field appIdField = appBrandSysConfigClass.getDeclaredField("appId");
+                    appIdField.setAccessible(true);
+                    appId = (String) appIdField.get(arg0);
+                    Field etuField = appBrandSysConfigClass.getDeclaredField("etu");
+                    etuField.setAccessible(true);
+                    gameName = (String) etuField.get(arg0);
                     Field iqsField = wxaPkgWrappingInfoClass.getDeclaredField("iqs");
                     iqsField.setAccessible(true);
                     int iqs = iqsField.getInt(izvObj);
-                    Log.d(INJECT_TAG, "原始AppBrandSysConfig.iyI=" + Boolean.toString(iyI) + " 原始WxaPkgWrappingInfo.iqs=" + iqs);
-                    iyIField.set(arg0, false);
-                    if (iqs == 0){
-                        iqsField.set(izvObj, 1);
-                    }
-                    Log.e(INJECT_TAG, "修改AppBrandSysConfig配置,开启调试功能");
+                    Log.d(INJECT_TAG, "原始AppBrandSysConfig.iyI=" + Boolean.toString(iyI) + " 原始WxaPkgWrappingInfo.iqs=" + iqs + " 游戏名字: " + gameName + " appId: " + appId);
+                    // 读取之前需要获取小游戏名字和appId
+                    readInjectSetting();
+                    break;
+                case "com.tencent.mm.plugin.appbrand.menu.MenuDelegate_EnableDebug.a":
+                    hookAppBrandMenu(param, 3, "开启/关闭调试");
                     break;
                 case "com.tencent.mm.sdk.a.b.chT":       // 这个函数在小游戏菜单中影响了 "appId: xxxxxx", "显示调试信息", "离开" 共三个菜单,而在其它地方调用也比较多,因此需要过滤下
                     Throwable throwable = new Throwable();
@@ -219,13 +233,7 @@ public class HookX5 implements IXposedHookLoadPackage, InputCallback {
                     }
                     break;
                 case "com.tencent.mm.plugin.appbrand.menu.h.a":
-                    Log.d(TAG, "Inject 修改小游戏\"转发\"菜单");
-                    Class<?> nClass = param.method.getDeclaringClass().getClassLoader().loadClass("com.tencent.mm.ui.base.n");
-                    Method fMethod = nClass.getDeclaredMethod("f", int.class, CharSequence.class);
-                    fMethod.setAccessible(true);
-                    Object arg2 = param.args[2];
-                    fMethod.invoke(arg2, 1, "注入脚本");
-                    param.setResult(null);
+                    hookAppBrandMenu(param, 1, "注入脚本");
                     break;
                 default:
                     break;
@@ -234,6 +242,15 @@ public class HookX5 implements IXposedHookLoadPackage, InputCallback {
         }
     };
 
+    private void hookAppBrandMenu(XC_MethodHook.MethodHookParam param, int id, String name) throws Throwable{
+        Log.d(INJECT_TAG, "Hook 小程序菜单");
+        Class<?> nClass = param.method.getDeclaringClass().getClassLoader().loadClass("com.tencent.mm.ui.base.n");
+        Method fMethod = nClass.getDeclaredMethod("f", int.class, CharSequence.class);
+        fMethod.setAccessible(true);
+        Object arg2 = param.args[2];
+        fMethod.invoke(arg2, id, name);
+        param.setResult(null);
+    }
 
     /**
      *  修改微信小游戏的功能菜单,主要将"转发"功能替换为脚本注入,开启小游戏调试功能
@@ -244,6 +261,7 @@ public class HookX5 implements IXposedHookLoadPackage, InputCallback {
     private void hookInject(XC_LoadPackage.LoadPackageParam loadPackageParam) throws ClassNotFoundException {
 //        XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.page.p$33", loadPackageParam.classLoader, "onClick", View.class, injectCallback);
         Class<?> appBrandSysConfigClass = loadPackageParam.classLoader.loadClass("com.tencent.mm.plugin.appbrand.config.AppBrandSysConfig");
+//         直接修改会影响到游戏的分享功能
         XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.e$15", loadPackageParam.classLoader, "b", appBrandSysConfigClass, injectCallback);
         // Hook菜单开放appid显示
         XposedHelpers.findAndHookMethod("com.tencent.mm.sdk.a.b", loadPackageParam.classLoader, "chT", injectCallback);
@@ -251,15 +269,17 @@ public class HookX5 implements IXposedHookLoadPackage, InputCallback {
         Class<?> pClass = loadPackageParam.classLoader.loadClass("com.tencent.mm.plugin.appbrand.page.p");
         Class<?> lClass = loadPackageParam.classLoader.loadClass("com.tencent.mm.plugin.appbrand.menu.l");
         Class<?> nClass = loadPackageParam.classLoader.loadClass("com.tencent.mm.ui.base.n");
+        XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.menu.MenuDelegate_EnableDebug", loadPackageParam.classLoader, "a", Context.class, pClass, nClass, String.class, injectCallback);
+
         XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.menu.h", loadPackageParam.classLoader, "a", Context.class, pClass, nClass, String.class, injectCallback);
         XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.menu.h", loadPackageParam.classLoader, "a", Context.class, pClass, String.class, lClass, new XC_MethodHook() {
             @Override
             protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                 Log.d(INJECT_TAG, "修改原始 \"转发\" 菜单点击事件");
                 Context context = (Context) param.args[0];
-                MyDialog dialog = new MyDialog(context, HookX5.this);
-                dialog.show();
                 param.setResult(null);
+                ChoiceDialog.getInstance().show(context, HookX5.this);
+
             }
         });
 
@@ -271,11 +291,6 @@ public class HookX5 implements IXposedHookLoadPackage, InputCallback {
             }
         });
     }
-
-
-
-
-
 
     private XC_MethodHook logCallback = new XC_MethodHook() {
         @Override
@@ -369,9 +384,6 @@ public class HookX5 implements IXposedHookLoadPackage, InputCallback {
         });
     }
 
-
-
-
     @Override
     public void success(Context context, final String js) {
         // 这里注入js代码
@@ -402,4 +414,49 @@ public class HookX5 implements IXposedHookLoadPackage, InputCallback {
             Log.e(INJECT_TAG, "注入结果: " + value);
         }
     };
+
+    public void readInjectSetting(){
+        new Thread(){
+            @Override
+            public void run() {
+                injectItemList = new ArrayList<>();
+                LinkedHashMap<String, List<InjectItem>> map = Utils.readInjectSettings();
+                Log.d(INJECT_TAG, "开始读取 " + gameName + " 小游戏配置注入脚本");
+                List<InjectItem> tmp = null;
+                if (map != null && map.size() > 0){
+                    // 我们优先考虑 appId 匹配再考虑游戏名字匹配
+                    for (String key : map.keySet()){
+                        List<InjectItem> list = map.get(key);
+                        if (list != null && list.size() > 0){
+                            if (list.get(0).getAppId().equals(appId)){
+                                tmp = list;
+                                break;
+                            }
+                        }
+                    }
+                    if (tmp == null){
+                        if (map.containsKey(gameName)){
+                            tmp = map.get(gameName);
+                        }
+                    }
+                    if (tmp == null){
+                        Log.e(INJECT_TAG, "当前游戏没有配置注入脚本");
+                        return;
+                    }
+                    // 有数据还要踢出没有开启的数据, 这里复制 InjectItem 使其临时List被回收
+                    for (InjectItem item : tmp){
+                        if (item.isAvailable()){
+                            injectItemList.add(InjectItem.copy(item));
+                        }
+                    }
+                    if (injectItemList.size() > 0){ // 有数据则先设置数据,后面直接调用Dialog即可
+                        ChoiceDialog.getInstance().setData(injectItemList);
+                        Log.e(INJECT_TAG, "已将本小游戏: " + gameName + " appId: " + appId + " 注入脚本添加至Dialog中");
+                    }
+                }else {
+                    Log.e(INJECT_TAG, "当前游戏没有配置注入脚本");
+                }
+            }
+        }.run();
+    }
 }

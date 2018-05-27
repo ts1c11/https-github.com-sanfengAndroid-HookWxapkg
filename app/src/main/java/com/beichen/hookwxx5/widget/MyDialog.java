@@ -1,4 +1,4 @@
-package com.beichen.hookwxx5.plugin;
+package com.beichen.hookwxx5.widget;
 
 import android.app.Dialog;
 import android.content.Context;
@@ -13,6 +13,8 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.beichen.hookwxx5.plugin.ChoicesCallback;
+
 public class MyDialog extends Dialog implements View.OnClickListener {
     private Context context;
     private TextView tv_title;
@@ -20,9 +22,9 @@ public class MyDialog extends Dialog implements View.OnClickListener {
     private Button btn_confirm, btn_cancel;
     private LinearLayout pLayout;
     private RelativeLayout cLayout;
-    private InputCallback callback;
+    private ChoicesCallback callback;
 
-    public MyDialog(Context context, InputCallback callback) {
+    public MyDialog(Context context, ChoicesCallback callback) {
         super(context);
         this.context = context;
         this.callback = callback;

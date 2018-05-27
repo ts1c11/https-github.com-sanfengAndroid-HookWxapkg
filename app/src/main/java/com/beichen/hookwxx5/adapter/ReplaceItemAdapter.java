@@ -1,4 +1,4 @@
-package com.beichen.hookwxx5;
+package com.beichen.hookwxx5.adapter;
 
 import android.content.Context;
 import android.util.Log;
@@ -8,15 +8,19 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.TextView;
 
+import com.beichen.hookwxx5.widget.JSReplaceActivity;
+import com.beichen.hookwxx5.R;
+import com.beichen.hookwxx5.data.ReplaceItem;
+
 import java.util.List;
 
-public class ItemAdapter extends ArrayAdapter<Item> {
+public class ReplaceItemAdapter extends ArrayAdapter<ReplaceItem> {
     private final int resourceId;
     private Context context;
-    public List<Item> list;
-    private MainActivity.DataCallBack callBack;
+    public List<ReplaceItem> list;
+    private JSReplaceActivity.DataCallBack callBack;
 
-    public ItemAdapter(Context context, int resource, List<Item> list, MainActivity.DataCallBack callBack) {
+    public ReplaceItemAdapter(Context context, int resource, List<ReplaceItem> list, JSReplaceActivity.DataCallBack callBack) {
         super(context, resource);
         this.context = context;
         resourceId = resource;
@@ -30,13 +34,13 @@ public class ItemAdapter extends ArrayAdapter<Item> {
     }
 
     @Override
-    public Item getItem(int position) {
+    public ReplaceItem getItem(int position) {
         return list.get(position);
     }
 
     @Override
-    public View getView(int position,  View convertView, ViewGroup parent) {
-        Item cur =  getItem(position);
+    public View getView(int position, View convertView, ViewGroup parent) {
+        ReplaceItem cur =  getItem(position);
         View view;
         if (convertView == null){
             view = LayoutInflater.from(context).inflate(resourceId, parent, false);
