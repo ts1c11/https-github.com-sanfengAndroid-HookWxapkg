@@ -4,21 +4,11 @@ import android.text.TextUtils;
 
 import org.json.JSONObject;
 
-public class InjectItem {
-    private String gameName;     // 小游戏名字
+public class InjectItem extends BaseItem{
     private String displayName;  // 显示名字,供自己分别脚本,在小游戏注入窗口显示
     private String node;         // 对脚本的备注
-    private String appId;        // 小游戏appId,可根据它来判断游戏,可以为空
     private String jsCode;       // 待注入的jsCode
-    private boolean available;   // 当前是否可用,在小游戏注入窗口是否显示,避免过多显示影响UI
 
-    public String getGameName() {
-        return gameName;
-    }
-
-    public void setGameName(String gameName) {
-        this.gameName = gameName;
-    }
 
     public String getDisplayName() {
         return displayName;
@@ -36,14 +26,6 @@ public class InjectItem {
         this.node = node;
     }
 
-    public String getAppId() {
-        return appId;
-    }
-
-    public void setAppId(String appId) {
-        this.appId = appId;
-    }
-
     public String getJsCode() {
         return jsCode;
     }
@@ -52,25 +34,17 @@ public class InjectItem {
         this.jsCode = jsCode;
     }
 
-    public boolean isAvailable() {
-        return available;
+    private static final String JSON_INJECT_GAME_NAME = "game_name";             // 对应json的key
+    private static final String JSON_INJECT_DISPLAY_NAME = "display_name";       // 对应json的key
+    private static final String JSON_INJECT_NODE = "node";                       // 对应json的key
+    private static final String JSON_INJECT_APPID = "appId";                     // 对应json的key
+    private static final String JSON_INJECT_JS_CODE = "javascripty_code";        // 对应json的key
+    private static final String JSON_INJECT_AVAILABLE = "available";             // 对应json的key
+
+
+    public InjectItem(){
+        setProfile("beichen_inject");
     }
-
-    public void setAvailable(boolean available) {
-        this.available = available;
-    }
-
-
-    public static final String JSON_INJECT_GAME_NAME = "game_name";             // 对应json的key
-    public static final String JSON_INJECT_DISPLAY_NAME = "display_name";       // 对应json的key
-    public static final String JSON_INJECT_NODE = "node";                       // 对应json的key
-    public static final String JSON_INJECT_APPID = "appId";                     // 对应json的key
-    public static final String JSON_INJECT_JS_CODE = "javascripty_code";        // 对应json的key
-    public static final String JSON_INJECT_AVAILABLE = "available";             // 对应json的key
-    public static final String JSON_INJECT_KEY_NAME = "game";                   // 每个游戏保存的json格式对应键的名字
-    public static final String JSON_INJECT_VALUE_NAME = "data";                 // 每个游戏保存的json格式对应值得名字
-
-    public InjectItem(){}
 
     public InjectItem(String gameName, String displayName, String node, String appId, String jsCode, boolean available){
         this.gameName = gameName;
@@ -79,43 +53,46 @@ public class InjectItem {
         this.appId = appId;
         this.jsCode = jsCode;
         this.available = available;
+        setProfile("beichen_inject");
     }
 
-    public static JSONObject InjectItem2JSON(InjectItem injectItem){
+    @Override
+    public JSONObject item2Json() {
         JSONObject jsonObject = new JSONObject();
         try {
             String tmp;
-            jsonObject.put(JSON_INJECT_GAME_NAME, injectItem.gameName);
-            jsonObject.put(JSON_INJECT_DISPLAY_NAME, injectItem.displayName);
-            tmp = TextUtils.isEmpty(injectItem.node) ? "" : injectItem.node;
+            jsonObject.put(JSON_INJECT_GAME_NAME, this.getGameName());
+            jsonObject.put(JSON_INJECT_DISPLAY_NAME, this.getDisplayName());
+            tmp = TextUtils.isEmpty(this.getNode()) ? "" : this.getNode();
             jsonObject.put(JSON_INJECT_NODE, tmp);
-            tmp = TextUtils.isEmpty(injectItem.appId) ? "" : injectItem.appId;
+            tmp = TextUtils.isEmpty(this.getAppId()) ? "" : this.getAppId();
             jsonObject.put(JSON_INJECT_APPID, tmp);
-            jsonObject.put(JSON_INJECT_JS_CODE, injectItem.jsCode);
-            jsonObject.put(JSON_INJECT_AVAILABLE, injectItem.available);
+            jsonObject.put(JSON_INJECT_JS_CODE, this.getJsCode());
+            jsonObject.put(JSON_INJECT_AVAILABLE, this.isAvailable());
         }catch (Exception e){
             return null;
         }
         return jsonObject;
     }
 
-    public static InjectItem JSON2InjectItem(JSONObject jsonObject){
+    @Override
+    public BaseItem json2Item(JSONObject json) {
         InjectItem injectItem = new InjectItem();
         try {
-            injectItem.gameName = jsonObject.getString(JSON_INJECT_GAME_NAME);
-            injectItem.displayName = jsonObject.getString(JSON_INJECT_DISPLAY_NAME);
-            injectItem.node = jsonObject.getString(JSON_INJECT_NODE);
-            injectItem.appId = jsonObject.getString(JSON_INJECT_APPID);
-            injectItem.jsCode = jsonObject.getString(JSON_INJECT_JS_CODE);
-            injectItem.available = jsonObject.getBoolean(JSON_INJECT_AVAILABLE);
+            injectItem.setGameName(json.optString(JSON_INJECT_GAME_NAME));
+            injectItem.setDisplayName(json.optString(JSON_INJECT_DISPLAY_NAME));
+            injectItem.setNode(json.optString(JSON_INJECT_NODE));
+            injectItem.setAppId(json.optString(JSON_INJECT_APPID));
+            injectItem.setJsCode(json.optString(JSON_INJECT_JS_CODE));
+            injectItem.setAvailable(json.optBoolean(JSON_INJECT_AVAILABLE));
         }catch (Exception e){
             return null;
         }
         return injectItem;
     }
 
-    public static InjectItem copy(InjectItem item){
-        InjectItem item1 = new InjectItem(item.getGameName(), item.getDisplayName(), item.getNode(), item.getAppId(), item.getJsCode(), item.available);
-        return item1;
+    @Override
+    public BaseItem copy() {
+        return new InjectItem(this.getGameName(), this.getDisplayName(), this.getNode(), this.getAppId(), this.getJsCode(), this.available);
     }
 }

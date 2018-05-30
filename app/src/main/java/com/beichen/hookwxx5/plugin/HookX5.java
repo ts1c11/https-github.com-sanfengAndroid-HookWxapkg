@@ -7,10 +7,10 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.webkit.ValueCallback;
 
+import com.beichen.hookwxx5.data.BaseItem;
 import com.beichen.hookwxx5.data.InjectItem;
 import com.beichen.hookwxx5.data.ReplaceItem;
 import com.beichen.hookwxx5.widget.ChoiceDialog;
-import com.beichen.hookwxx5.widget.MyDialog;
 
 import org.json.JSONObject;
 
@@ -33,118 +33,10 @@ public class HookX5 implements IXposedHookLoadPackage, ChoicesCallback {
     private final static String WX_TAG = "beichen.wxLog";
     public static Object ibvObj = null;                             // 注入脚本时需要的对象
     private XC_LoadPackage.LoadPackageParam mLoadPackageParam;
-    private static List<ReplaceItem> modifyList;                           // 保存所有脚本替换数据
-    private static List<InjectItem> injectItemList = null;
+    private static List<ReplaceItem> replaceList = new ArrayList<>();                           // 保存所有脚本替换数据
+    private static List<InjectItem> injectList = new ArrayList<>();
     private static String gameName;
     private static String appId;
-
-
-    private XC_MethodHook x5WebViewCallback = new XC_MethodHook() {
-        @Override
-        protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-            String name = param.method.getDeclaringClass().getName() + "." + param.method.getName();
-            switch (name){
-                case "com.tencent.smtt.sdk.WebView.loadUrl":
-                    if (param.args.length == 1){
-                        Log.e(TAG, "X5 Hook loadUrl(String)方法之前", new Exception());
-                        String url = (String) param.args[0];
-                        Log.e(TAG, "loadUrl: " + url);
-                    } else if (param.args.length == 2){
-                        Log.e(TAG, "X5 loadUrl(String, Map): " + (String) param.args[0]);
-                    }
-                    break;
-                case "com.tencent.smtt.sdk.WebView.evaluateJavascript":
-                    Log.e(TAG, "evaluateJavascript 堆栈", new Exception());
-                    String js = (String) param.args[0];
-                    ValueCallback callback = (ValueCallback) param.args[1];
-                    Log.e(TAG, "evaluateJavascript JS : " + js);
-                    break;
-                case "com.tencent.smtt.sdk.WebView.loadData":
-                    Log.e(TAG, "X5 Hook loadData(String, String, String) 方法之前", new Exception());
-                    String str1 = (String) param.args[0];
-                    String str2 = (String) param.args[1];
-                    String str3 = (String) param.args[2];
-                    Log.e(TAG, "data=" + str1 + " mineType=" + str2 + " encoding=" + str3);
-                    break;
-                case "com.tencent.smtt.sdk.WebView.loadDataWithBaseURL":
-                    //String baseUrl, String data, String mimeType, String encoding, String historyUrl
-                    String baseUrl = (String) param.args[0];
-                    String data = (String) param.args[1];
-                    String mimeType = (String) param.args[2];
-                    String encoding = (String) param.args[3];
-                    String historyUrl = (String) param.args[4];
-                    Log.e(TAG, "loadDataWithBaseURL 堆栈: ", new Exception());
-                    Log.e(TAG, "loadDataWithBaseURL: baseUrl=" + baseUrl + " data=" + data + " mimeType=" + mimeType + " encoding=" + encoding + " historyUrl=" + historyUrl);
-                    break;
-            }
-        }
-    };
-
-    private XC_MethodHook appbrandCallback = new XC_MethodHook() {
-        @Override
-        protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-
-            switch (param.method.getDeclaringClass().getName() + "." + param.method.getName()){
-                case "com.tencent.mm.plugin.appbrand.appcache.ap.a":
-                    String name = (String) param.args[1];
-                    //Log.e(TAG, "ap.a 堆栈:  " + name, new Exception());
-                    break;
-            }
-        }
-
-        @Override
-        protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-            Log.e(TAG, "afterHookedMethod: " + param.method.getDeclaringClass().getName() + "." + param.method.getName());
-            String name = param.method.getDeclaringClass().getName() + "." + param.method.getName();
-            switch (name){
-                case "com.tencent.mm.plugin.appbrand.appcache.ap.a":
-                    String name1 = (String) param.args[1];
-                    String s = (String) param.getResult();
-                    Log.e(TAG, "读取js脚本, 脚本名: " + name1 + " 脚本内容: " + s);
-                    int i = 0;
-                    if (modifyList != null && modifyList.size() > 0){
-                        for (ReplaceItem replaceItem : modifyList){
-                            if (replaceItem.fileName.equals(name1)){
-                                if (!TextUtils.isEmpty(replaceItem.rule)){
-                                    if (!s.contains(replaceItem.rule)){    // 这里的规则是包含关系,需要确保在文件中的唯一性
-                                        i++;
-                                        continue;
-                                    }
-                                }
-                                // 接下来是替换
-                                if (s.contains(replaceItem.ori)){
-                                    s = s.replace(replaceItem.ori, replaceItem.mod);
-                                    Log.d(TAG + " 脚本替换", "replace loaction " + i + " success!");
-                                }else {
-                                    Log.e(TAG + " 脚本替换", "replace loaction " + i + " fail, please confirm!");
-                                }
-                            }
-                            i++;
-                        }
-                    }
-
-//                     attach 100%
-//                     for(var d=i.boxes,h=a+.5*InitMark.stageOffHeight,u=0;8>u;u++)if(d[u+1]>0&&t["hitImg"+u].hitTestPoint(o,h)){this._mark=u+1;break}
-//                     for(var d=i.boxes,u=0;u<8;u++)if(d[u+1]>0){this._mark=u+1;break}
-//
-//                     guess 100%
-//                     e["island"+n].initIslandView(i)}
-//                     e["island"+n].initIslandView(i)}var tar=0;if(dataManager.data.stealTarget.crowns==dataManager.data.stealIslands[0].crowns){tar=1;}else if(dataManager.data.stealTarget.crowns==dataManager.data.stealIslands[1].crowns){tar=2;}else{tar=3;}console.log("猜金币,选择: "+tar);new TextPop("选择: "+tar);
-//
-//                     video ad
-//                     var t=wx.createRewardedVideoAd({adUnitId:e});t.load().then(function(){return t.show()}).catch(function(e){return console.log(e.errMsg)}),t.onClose(function(e){console.log("onClose:",e),n&&n(),t.offClose()}),t.onError(function(e){console.log("error:",e),o&&o(),t.offError()})
-//                     console.log("onClose:", e);n&&n();
-//
-//                     hurt 100/200
-//                     e.attackTitan=function(t,n,i,a,o,r){
-//                     e.attackTitan=function(t,n,i,a,o,r){if(a){i=200;}else{i=100;}
-                    param.setResult(s);
-                    break;
-            }
-
-        }
-    };
-
 
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam loadPackageParam) throws Throwable {
@@ -153,31 +45,69 @@ public class HookX5 implements IXposedHookLoadPackage, ChoicesCallback {
         }
         mLoadPackageParam = loadPackageParam;
         // 这里直接在宿主线程中读取数据,数据多的情况下可能会造成ANR
-        modifyList = Utils.readReplaceSettings();
-        Log.d(TAG, "共获取修改项: " + modifyList.size() + "项");
         ClassLoader loader = loadPackageParam.classLoader;
         Log.e(TAG, "开始Hook微信, 当前进程名: " + loadPackageParam.processName);
-
-        /*************** Hook x5内核框架层 *******************/
-        // 因Android使用的是x5内核,因此最终都会执行到这个地方
-        Class<?> webView = XposedHelpers.findClass("com.tencent.smtt.sdk.WebView", loadPackageParam.classLoader);
-        XposedHelpers.findAndHookMethod(webView, "loadUrl", String.class,x5WebViewCallback);
-        XposedHelpers.findAndHookMethod(webView, "loadUrl", String.class, Map.class, x5WebViewCallback);
-        Class<?> valueCallBackClass = loader.loadClass("com.tencent.smtt.sdk.ab");
-        XposedHelpers.findAndHookMethod(webView, "evaluateJavascript", String.class, valueCallBackClass, x5WebViewCallback);
-        XposedHelpers.findAndHookMethod(webView, "loadData", String.class, String.class, String.class, x5WebViewCallback);
-        XposedHelpers.findAndHookMethod(webView, "loadDataWithBaseURL", String.class, String.class, String.class, String.class, String.class, x5WebViewCallback);
-
-        // 这个类是在读取JS文件为字符串
-        Class<?> appbrandEClass = loader.loadClass("com.tencent.mm.plugin.appbrand.e");
-        XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.appcache.ap", loader, "a", appbrandEClass, String.class, appbrandCallback);
-
+        // hook 微信X5内核
+        hookX5Kernel(loadPackageParam);
         // hook 微信log和小程序log
         hookLog(loadPackageParam.classLoader);
         // hook 微信小游戏添加注入功能
         hookInject(loadPackageParam);
     }
 
+
+
+    private void hookX5Kernel(XC_LoadPackage.LoadPackageParam loadPackageParam){
+        XC_MethodHook x5WebViewCallback = new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                String name = param.method.getDeclaringClass().getName() + "." + param.method.getName();
+                switch (name){
+                    case "com.tencent.smtt.sdk.WebView.loadUrl":
+                        if (param.args.length == 1){
+                            Log.d(TAG, "X5 Hook loadUrl(String)方法之前", new Exception());
+                            String url = (String) param.args[0];
+                            Log.d(TAG, "loadUrl: " + url);
+                        } else if (param.args.length == 2){
+                            Log.d(TAG, "X5 loadUrl(String, Map): " + (String) param.args[0]);
+                        }
+                        break;
+                    case "com.tencent.smtt.sdk.WebView.evaluateJavascript":
+                        Log.d(TAG, "evaluateJavascript 堆栈", new Exception());
+                        String js = (String) param.args[0];
+                        ValueCallback callback = (ValueCallback) param.args[1];
+                        Log.d(TAG, "evaluateJavascript JS : " + js);
+                        break;
+                    case "com.tencent.smtt.sdk.WebView.loadData":
+                        Log.d(TAG, "X5 Hook loadData(String, String, String) 方法之前", new Exception());
+                        String str1 = (String) param.args[0];
+                        String str2 = (String) param.args[1];
+                        String str3 = (String) param.args[2];
+                        Log.d(TAG, "data=" + str1 + " mineType=" + str2 + " encoding=" + str3);
+                        break;
+                    case "com.tencent.smtt.sdk.WebView.loadDataWithBaseURL":
+                        //String baseUrl, String data, String mimeType, String encoding, String historyUrl
+                        String baseUrl = (String) param.args[0];
+                        String data = (String) param.args[1];
+                        String mimeType = (String) param.args[2];
+                        String encoding = (String) param.args[3];
+                        String historyUrl = (String) param.args[4];
+                        Log.e(TAG, "loadDataWithBaseURL 堆栈: ", new Exception());
+                        Log.e(TAG, "loadDataWithBaseURL: baseUrl=" + baseUrl + " data=" + data + " mimeType=" + mimeType + " encoding=" + encoding + " historyUrl=" + historyUrl);
+                        break;
+                }
+            }
+        };
+        /*************** Hook x5内核框架层 *******************/
+        // 因Android使用的是x5内核,因此最终都会执行到这个地方
+        Class<?> webView = XposedHelpers.findClass("com.tencent.smtt.sdk.WebView", loadPackageParam.classLoader);
+        XposedHelpers.findAndHookMethod(webView, "loadUrl", String.class,x5WebViewCallback);
+        XposedHelpers.findAndHookMethod(webView, "loadUrl", String.class, Map.class, x5WebViewCallback);
+        Class<?> valueCallBackClass = XposedHelpers.findClass("com.tencent.smtt.sdk.ab", loadPackageParam.classLoader);
+        XposedHelpers.findAndHookMethod(webView, "evaluateJavascript", String.class, valueCallBackClass, x5WebViewCallback);
+        XposedHelpers.findAndHookMethod(webView, "loadData", String.class, String.class, String.class, x5WebViewCallback);
+        XposedHelpers.findAndHookMethod(webView, "loadDataWithBaseURL", String.class, String.class, String.class, String.class, String.class, x5WebViewCallback);
+    }
 
 
 
@@ -210,8 +140,12 @@ public class HookX5 implements IXposedHookLoadPackage, ChoicesCallback {
                     iqsField.setAccessible(true);
                     int iqs = iqsField.getInt(izvObj);
                     Log.d(INJECT_TAG, "原始AppBrandSysConfig.iyI=" + Boolean.toString(iyI) + " 原始WxaPkgWrappingInfo.iqs=" + iqs + " 游戏名字: " + gameName + " appId: " + appId);
+                    initGameData(ReplaceItem.class);        // 这里为了保证能够替换脚本因此得运行在主线程中
+                    if (replaceList.size() > 0){
+                        Log.d(INJECT_TAG, "当前游戏共有 " + replaceList.size() + " 项脚本需要替换");
+                    }
                     // 读取之前需要获取小游戏名字和appId
-                    readInjectSetting();
+                    initInjectSetting();                    // 注入配置的读取不用运行在主线程中
                     break;
                 case "com.tencent.mm.plugin.appbrand.menu.MenuDelegate_EnableDebug.a":
                     hookAppBrandMenu(param, 3, "开启/关闭调试");
@@ -226,7 +160,7 @@ public class HookX5 implements IXposedHookLoadPackage, ChoicesCallback {
                             case "com.tencent.mm.plugin.appbrand.menu.c.a":        // 显示 appId
                                 // case "com.tencent.mm.plugin.appbrand.menu.g.a":        // 离开菜单
                             case "com.tencent.mm.plugin.appbrand.page.p.a":
-                                Log.e(INJECT_TAG, "开启小游戏 appId 菜单项");
+                                Log.d(INJECT_TAG, "开启小游戏 appId 菜单项");
                                 param.setResult(true);
                                 break;
                         }
@@ -235,6 +169,37 @@ public class HookX5 implements IXposedHookLoadPackage, ChoicesCallback {
                 case "com.tencent.mm.plugin.appbrand.menu.h.a":
                     hookAppBrandMenu(param, 1, "注入脚本");
                     break;
+                case "com.tencent.mm.plugin.appbrand.q.i.a":                // 脚本替换的地方
+                    String fileName = (String) param.args[1];           // 这个函数在挂载 game.js脚本,可以在这里替换
+                    String js = (String) param.args[2];
+                    int i = 0;
+                    if (replaceList != null && replaceList.size() > 0){
+                        for (ReplaceItem replaceItem : replaceList){
+                            if (replaceItem.getFileName().equals(fileName)){
+                                Log.d(INJECT_TAG, "正在替换 " + replaceItem.getFileName() + " 脚本");
+                                if (!TextUtils.isEmpty(replaceItem.getAppId())){
+                                    if (!js.contains(replaceItem.getAppId())){    // 这里的规则是包含关系,需要确保在文件中的唯一性
+                                        i++;
+                                        continue;
+                                    }
+                                }
+                                // 接下来是替换
+                                if (js.contains(replaceItem.getOri())){
+                                    js = js.replace(replaceItem.getOri(), replaceItem.getMod());
+                                    Log.d(INJECT_TAG, "脚本替换: replace loaction " + i + " success!");
+                                }else {
+                                    Log.e(INJECT_TAG, "脚本替换: replace loaction " + i + " fail, please confirm!");
+                                }
+                            }
+                            i++;
+                        }
+                    }
+                    param.args[2] = js;
+                    break;
+                case "com.tencent.mm.plugin.appbrand.game.d.aaK":           // 获取WebView对象
+                    Log.d(INJECT_TAG, "d.aaK() 方法已执行,保存ibv对象, 便于后面js注入");
+                    // ibvObj = param.getResult();
+                    break;
                 default:
                     break;
             }
@@ -242,6 +207,13 @@ public class HookX5 implements IXposedHookLoadPackage, ChoicesCallback {
         }
     };
 
+    /**
+     *  在微信小游戏菜单中添加菜单项
+     * @param param         方法有关的参赛
+     * @param id            菜单项对应的id,应该跟排序有关
+     * @param name          菜单显示的名字
+     * @throws Throwable
+     */
     private void hookAppBrandMenu(XC_MethodHook.MethodHookParam param, int id, String name) throws Throwable{
         Log.d(INJECT_TAG, "Hook 小程序菜单");
         Class<?> nClass = param.method.getDeclaringClass().getClassLoader().loadClass("com.tencent.mm.ui.base.n");
@@ -259,7 +231,6 @@ public class HookX5 implements IXposedHookLoadPackage, ChoicesCallback {
      * @throws ClassNotFoundException
      */
     private void hookInject(XC_LoadPackage.LoadPackageParam loadPackageParam) throws ClassNotFoundException {
-//        XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.page.p$33", loadPackageParam.classLoader, "onClick", View.class, injectCallback);
         Class<?> appBrandSysConfigClass = loadPackageParam.classLoader.loadClass("com.tencent.mm.plugin.appbrand.config.AppBrandSysConfig");
 //         直接修改会影响到游戏的分享功能
         XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.e$15", loadPackageParam.classLoader, "b", appBrandSysConfigClass, injectCallback);
@@ -270,7 +241,6 @@ public class HookX5 implements IXposedHookLoadPackage, ChoicesCallback {
         Class<?> lClass = loadPackageParam.classLoader.loadClass("com.tencent.mm.plugin.appbrand.menu.l");
         Class<?> nClass = loadPackageParam.classLoader.loadClass("com.tencent.mm.ui.base.n");
         XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.menu.MenuDelegate_EnableDebug", loadPackageParam.classLoader, "a", Context.class, pClass, nClass, String.class, injectCallback);
-
         XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.menu.h", loadPackageParam.classLoader, "a", Context.class, pClass, nClass, String.class, injectCallback);
         XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.menu.h", loadPackageParam.classLoader, "a", Context.class, pClass, String.class, lClass, new XC_MethodHook() {
             @Override
@@ -283,80 +253,93 @@ public class HookX5 implements IXposedHookLoadPackage, ChoicesCallback {
             }
         });
 
-        XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.game.d", loadPackageParam.classLoader, "aaK", new XC_MethodHook() {
-            @Override
-            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                Log.e(INJECT_TAG, "d.aaK() 方法已执行,保存ibv对象, 便于后面js注入");
-                ibvObj = param.getResult();
-            }
+        // 目前获取WebView实例的方法有多种,似乎每种都不同,但可能都是继承了一个基类
+        XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.game.d", loadPackageParam.classLoader, "aaK", injectCallback);
+        final Class<?> jClass = loadPackageParam.classLoader.loadClass("com.tencent.mm.plugin.appbrand.j");
+        XposedHelpers.findAndHookConstructor(jClass, new XC_MethodHook() {
+                   @Override
+                   protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                       Log.d(INJECT_TAG, "Hook j类构造方法得到对象,方法名:" + param.method.getName());
+                       Object obj = param.thisObject;
+                       Field ibvField = jClass.getDeclaredField("ibv");
+                       ibvField.setAccessible(true);
+                       ibvObj = ibvField.get(obj);
+                   }
         });
+
+       // hook 游戏脚本修改
+        Class<?> bClass = loadPackageParam.classLoader.loadClass("com.tencent.mm.plugin.appbrand.g.b");
+        Class<?> aClass = loadPackageParam.classLoader.loadClass("com.tencent.mm.plugin.appbrand.q.i$a");
+        XposedHelpers.findAndHookMethod("com.tencent.mm.plugin.appbrand.q.i", loadPackageParam.classLoader, "a", bClass, String.class, String.class, aClass, injectCallback);
     }
 
-    private XC_MethodHook logCallback = new XC_MethodHook() {
-        @Override
-        protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-            boolean log = false;
-            Throwable ex = new Throwable();
-            StackTraceElement[] elements = ex.getStackTrace();
-            for (StackTraceElement element : elements){
-                if (element.getClassName().contains("com.tencent.mm.plugin.appbrand")){
-                    log = true;
-                    break;
-                }
-            }
-            if (!log){
-                return;
-            }
-            int level = 0;
-            String name = param.method.getName();
-            String arg0 = (String) param.args[0];
-            String arg1 = (String) param.args[1];
-            Object[] arg2 = (Object[]) param.args[2];
-            String format = arg2 == null ? arg1 : String.format(arg1, arg2);
-            if (TextUtils.isEmpty(format)){
-                format = "null";
-            }
-            switch (name){
-                case "f":
-                case "i":
-                    level = 0;
-                    break;
-                case "d":
-                case "v":
-                case "k":
-                case "l":
-                    level = 1;
-                    break;
-                case "e":
-                case "w":
-                    level = 2;
-                    break;
-            }
-            switch (level){
-                case 0:
-                    Log.i(WX_TAG + " " + arg0, format);
-                    break;
-                case 1:
-                    Log.d(WX_TAG + " " + arg0, format);
-                    break;
-                case 2:
-                    Log.e(WX_TAG + " " + arg0, format);
-                    break;
-            }
-        }
-    };
 
 
     public void hookLog(ClassLoader loader) throws Exception{
-        Class<?> logClass = loader.loadClass("com.tencent.mm.sdk.platformtools.w");
-        XposedHelpers.findAndHookMethod(logClass, "f", String.class, String.class, Object[].class, logCallback);
-        XposedHelpers.findAndHookMethod(logClass, "e", String.class, String.class, Object[].class, logCallback);
-        XposedHelpers.findAndHookMethod(logClass, "w", String.class, String.class, Object[].class, logCallback);
-        XposedHelpers.findAndHookMethod(logClass, "i", String.class, String.class, Object[].class, logCallback);
-        XposedHelpers.findAndHookMethod(logClass, "d", String.class, String.class, Object[].class, logCallback);
-        XposedHelpers.findAndHookMethod(logClass, "v", String.class, String.class, Object[].class, logCallback);
-        XposedHelpers.findAndHookMethod(logClass, "k", String.class, String.class, Object[].class, logCallback);
-        XposedHelpers.findAndHookMethod(logClass, "l", String.class, String.class, Object[].class, logCallback);
+
+        XC_MethodHook logCallback = new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                boolean log = false;
+                Throwable ex = new Throwable();
+                StackTraceElement[] elements = ex.getStackTrace();
+                for (StackTraceElement element : elements){
+                    if (element.getClassName().contains("com.tencent.mm.plugin.appbrand")){
+                        log = true;
+                        break;
+                    }
+                }
+                if (!log){
+                    return;
+                }
+                int level = 0;
+                String name = param.method.getName();
+                String arg0 = (String) param.args[0];
+                String arg1 = (String) param.args[1];
+                Object[] arg2 = (Object[]) param.args[2];
+                String format = arg2 == null ? arg1 : String.format(arg1, arg2);
+                if (TextUtils.isEmpty(format)){
+                    format = "null";
+                }
+                switch (name){
+                    case "f":
+                    case "i":
+                        level = 0;
+                        break;
+                    case "d":
+                    case "v":
+                    case "k":
+                    case "l":
+                        level = 1;
+                        break;
+                    case "e":
+                    case "w":
+                        level = 2;
+                        break;
+                }
+                switch (level){
+                    case 0:
+                        Log.i(WX_TAG + " " + arg0, format);
+                        break;
+                    case 1:
+                        Log.d(WX_TAG + " " + arg0, format);
+                        break;
+                    case 2:
+                        Log.e(WX_TAG + " " + arg0, format);
+                        break;
+                }
+            }
+        };
+
+         Class<?> logClass = loader.loadClass("com.tencent.mm.sdk.platformtools.w");
+         XposedHelpers.findAndHookMethod(logClass, "f", String.class, String.class, Object[].class, logCallback);
+         XposedHelpers.findAndHookMethod(logClass, "e", String.class, String.class, Object[].class, logCallback);
+         XposedHelpers.findAndHookMethod(logClass, "w", String.class, String.class, Object[].class, logCallback);
+         XposedHelpers.findAndHookMethod(logClass, "i", String.class, String.class, Object[].class, logCallback);
+         XposedHelpers.findAndHookMethod(logClass, "d", String.class, String.class, Object[].class, logCallback);
+         XposedHelpers.findAndHookMethod(logClass, "v", String.class, String.class, Object[].class, logCallback);
+         XposedHelpers.findAndHookMethod(logClass, "k", String.class, String.class, Object[].class, logCallback);
+         XposedHelpers.findAndHookMethod(logClass, "l", String.class, String.class, Object[].class, logCallback);
 
         // 将小程序日志自定义转发到java
         Class<?> arg0Class = loader.loadClass("com.tencent.mm.plugin.appbrand.j");
@@ -384,6 +367,11 @@ public class HookX5 implements IXposedHookLoadPackage, ChoicesCallback {
         });
     }
 
+
+    /**
+     * @param context   上下文环境
+     * @param js        获取到待注入的脚本
+     */
     @Override
     public void success(Context context, final String js) {
         // 这里注入js代码
@@ -396,11 +384,16 @@ public class HookX5 implements IXposedHookLoadPackage, ChoicesCallback {
             @Override
             public void run() {
                 try {
-                    Log.e(INJECT_TAG, "主进程开始注入代码: " + js);
+                    Log.d(INJECT_TAG, "主进程开始注入代码: " + js);
                     Class<?> gClass = mLoadPackageParam.classLoader.loadClass("com.tencent.mm.plugin.appbrand.game.g");
                     Method evaluateJavascriptMethod = gClass.getDeclaredMethod("evaluateJavascript", String.class, ValueCallback.class);
                     evaluateJavascriptMethod.setAccessible(true);
-                    evaluateJavascriptMethod.invoke(ibvObj, js, valueCallback);
+                    evaluateJavascriptMethod.invoke(ibvObj, js, new ValueCallback<String>() {
+                        @Override
+                        public void onReceiveValue(String value) {
+                            Log.d(INJECT_TAG, "注入结果: " + value);
+                        }
+                    });
                 }catch (Exception e){
                     Log.e(INJECT_TAG, "注入错误", e);
                 }
@@ -408,55 +401,58 @@ public class HookX5 implements IXposedHookLoadPackage, ChoicesCallback {
         });
     }
 
-    private ValueCallback<String> valueCallback = new ValueCallback<String>() {
-        @Override
-        public void onReceiveValue(String value) {
-            Log.e(INJECT_TAG, "注入结果: " + value);
-        }
-    };
 
-    public void readInjectSetting(){
+    /**
+     * 读取脚本注入配置文件
+     */
+    public void initInjectSetting(){
         new Thread(){
             @Override
             public void run() {
-                injectItemList = new ArrayList<>();
-                LinkedHashMap<String, List<InjectItem>> map = Utils.readInjectSettings();
-                Log.d(INJECT_TAG, "开始读取 " + gameName + " 小游戏配置注入脚本");
-                List<InjectItem> tmp = null;
-                if (map != null && map.size() > 0){
-                    // 我们优先考虑 appId 匹配再考虑游戏名字匹配
-                    for (String key : map.keySet()){
-                        List<InjectItem> list = map.get(key);
-                        if (list != null && list.size() > 0){
-                            if (list.get(0).getAppId().equals(appId)){
-                                tmp = list;
-                                break;
-                            }
-                        }
-                    }
-                    if (tmp == null){
-                        if (map.containsKey(gameName)){
-                            tmp = map.get(gameName);
-                        }
-                    }
-                    if (tmp == null){
-                        Log.e(INJECT_TAG, "当前游戏没有配置注入脚本");
-                        return;
-                    }
-                    // 有数据还要踢出没有开启的数据, 这里复制 InjectItem 使其临时List被回收
-                    for (InjectItem item : tmp){
-                        if (item.isAvailable()){
-                            injectItemList.add(InjectItem.copy(item));
-                        }
-                    }
-                    if (injectItemList.size() > 0){ // 有数据则先设置数据,后面直接调用Dialog即可
-                        ChoiceDialog.getInstance().setData(injectItemList);
-                        Log.e(INJECT_TAG, "已将本小游戏: " + gameName + " appId: " + appId + " 注入脚本添加至Dialog中");
-                    }
-                }else {
-                    Log.e(INJECT_TAG, "当前游戏没有配置注入脚本");
-                }
+               initGameData(InjectItem.class);
             }
         }.run();
+    }
+
+    private <T extends BaseItem> void  initGameData(Class<T> cls) {
+        LinkedHashMap<String, List<T>> map = null;
+        map = Utils.readSettings(cls);
+        if (cls.isAssignableFrom(InjectItem.class)){            // 由于单个小程序进程只会调用一次,这里可以不用清理
+            injectList.clear();
+        }else if (cls.isAssignableFrom(ReplaceItem.class)){
+            replaceList.clear();
+        }
+        if (map != null && map.size() > 0){
+            List<T> tmp = null;
+            for (String key : map.keySet()){
+                List<T> list = map.get(key);
+                if (list != null && list.size() > 0){
+                    if (list.get(0).getAppId().equals(appId)){
+                        tmp = list;
+                        break;
+                    }
+                }
+                if (tmp == null && map.containsKey(gameName)){                                  // 其次判断游戏名称
+                    tmp = map.get(gameName);
+                }
+                if (tmp == null){
+                    Log.e(INJECT_TAG, "当前游戏 " + gameName + " 没有配置注入或替换脚本");
+                    return;
+                }
+                for (BaseItem item : tmp){                                                      // 过滤没有开启的脚本
+                    if (item.isAvailable()){
+                        if (item instanceof InjectItem){
+                            injectList.add((InjectItem) item.copy());
+                        }else if (item instanceof ReplaceItem){
+                            replaceList.add((ReplaceItem) item.copy());
+                        }
+                    }
+                }
+                if (injectList.size() > 0){             // 多次调用没什么影响
+                    ChoiceDialog.getInstance().setData(injectList);
+                    Log.d(INJECT_TAG, "已将本小游戏: " + gameName + " appId: " + appId + " 注入脚本添加至Dialog中");
+                }
+            }
+        }
     }
 }

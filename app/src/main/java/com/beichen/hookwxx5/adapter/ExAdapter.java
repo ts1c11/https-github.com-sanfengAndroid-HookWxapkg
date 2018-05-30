@@ -9,24 +9,26 @@ import android.widget.BaseExpandableListAdapter;
 import android.widget.TextView;
 
 import com.beichen.hookwxx5.R;
+import com.beichen.hookwxx5.data.BaseItem;
 import com.beichen.hookwxx5.data.InjectItem;
+import com.beichen.hookwxx5.data.ReplaceItem;
 import com.beichen.hookwxx5.plugin.Utils;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 
-public class InjectExAdapter extends BaseExpandableListAdapter {
+public class ExAdapter<T extends BaseItem> extends BaseExpandableListAdapter {
 
-    private LinkedHashMap<String, List<InjectItem>> map;
+    private LinkedHashMap<String, List<T>> map;
     Context context;
     int groupLayoutId;
     int childrenLayoutId;
-
-    public InjectExAdapter(Context context, int groupLayoutId, int childrenLayoutId, LinkedHashMap<String, List<InjectItem>> map){
+    public ExAdapter(Context context, int groupLayoutId, int childrenLayoutId, LinkedHashMap<String, List<T>> map){
         this.context = context;
         this.groupLayoutId = groupLayoutId;
         this.childrenLayoutId = childrenLayoutId;
         this.map = map;
+
     }
 
     @Override
@@ -46,7 +48,7 @@ public class InjectExAdapter extends BaseExpandableListAdapter {
 
     @Override
     public int getChildrenCount(int groupPosition) {
-        List<InjectItem> itemList = Utils.LinkedHashMapIndex2Value(map, groupPosition);
+        List<T> itemList = Utils.LinkedHashMapIndex2Value(map, groupPosition);
         return itemList.size();
     }
 
@@ -57,7 +59,7 @@ public class InjectExAdapter extends BaseExpandableListAdapter {
 
     @Override
     public Object getChild(int groupPosition, int childPosition) {
-        List<InjectItem> itemList = Utils.LinkedHashMapIndex2Value(map, groupPosition);
+        List<T> itemList = Utils.LinkedHashMapIndex2Value(map, groupPosition);
         return itemList.get(childPosition);
     }
 
@@ -92,23 +94,37 @@ public class InjectExAdapter extends BaseExpandableListAdapter {
 
     @Override
     public View getChildView(int groupPosition, int childPosition, boolean isLastChild, View convertView, ViewGroup parent) {
-        View view;
+        View view = null;
         if (convertView == null){
             view = LayoutInflater.from(context).inflate(childrenLayoutId, parent, false);
         }else {
             view = convertView;
         }
-        InjectItem injectItem = (InjectItem) getChild(groupPosition, childPosition);
-        TextView tv_child_display_name = view.findViewById(R.id.tv_child_display_name);
-        TextView tv_child_avaliable = view.findViewById(R.id.tv_child_avaliable);
-        TextView tv_child_node = view.findViewById(R.id.tv_child_node);
-        TextView tv_child_appid = view.findViewById(R.id.tv_child_appid);
-        TextView tv_child_jscode = view.findViewById(R.id.tv_child_jscode);
-        tv_child_display_name.setText("显示名字: " + injectItem.getDisplayName());
-        tv_child_avaliable.setText("是否可用：" + Boolean.toString(injectItem.isAvailable()));
-        tv_child_node.setText("备注: " + injectItem.getNode());
-        tv_child_appid.setText("appId: " + injectItem.getAppId());
-        tv_child_jscode.setText("js脚本: " + injectItem.getJsCode());
+        if (getChild(groupPosition, childPosition) instanceof InjectItem){
+            InjectItem injectItem = (InjectItem) getChild(groupPosition, childPosition);
+            TextView display_name = view.findViewById(R.id.tv_child_inject_display_name);
+            TextView avaliable = view.findViewById(R.id.tv_child_inject_avaliable);
+            TextView node = view.findViewById(R.id.tv_child_inject_node);
+            TextView appid = view.findViewById(R.id.tv_child_inject_appid);
+            TextView jscode = view.findViewById(R.id.tv_child_inject_jscode);
+            display_name.setText("显示名字: " + injectItem.getDisplayName());
+            avaliable.setText("是否可用：" + Boolean.toString(injectItem.isAvailable()));
+            node.setText("备注: " + injectItem.getNode());
+            appid.setText("appId: " + injectItem.getAppId());
+            jscode.setText("js脚本: " + injectItem.getJsCode());
+        }else if (getChild(groupPosition, childPosition) instanceof ReplaceItem){
+            ReplaceItem replaceItem = (ReplaceItem) getChild(groupPosition, childPosition);
+            TextView file_name = view.findViewById(R.id.tv_child_replace_file_name);
+            TextView appid = view.findViewById(R.id.tv_child_replace_appid);
+            TextView avaliable = view.findViewById(R.id.tv_child_replace_available);
+            TextView ori = view.findViewById(R.id.tv_child_replace_ori);
+            TextView mod = view.findViewById(R.id.tv_child_replace_mod);
+            file_name.setText("脚本名: " + replaceItem.getFileName());
+            appid.setText("appId: " + replaceItem.getAppId());
+            avaliable.setText("是否可用: " + Boolean.toString(replaceItem.isAvailable()));
+            ori.setText("替换前: " + replaceItem.getOri());
+            mod.setText("替换后: " + replaceItem.getMod());
+        }
         return view;
     }
 

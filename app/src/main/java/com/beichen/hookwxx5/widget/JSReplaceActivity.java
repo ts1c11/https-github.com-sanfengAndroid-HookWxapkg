@@ -1,147 +1,78 @@
 package com.beichen.hookwxx5.widget;
 
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.Message;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
+import android.widget.CheckBox;
 import android.widget.EditText;
-import android.widget.ListView;
+import android.widget.ExpandableListView;
 import android.widget.Toast;
 
 import com.beichen.hookwxx5.R;
 import com.beichen.hookwxx5.data.ReplaceItem;
-import com.beichen.hookwxx5.adapter.ReplaceItemAdapter;
 import com.beichen.hookwxx5.plugin.Utils;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 
-public class JSReplaceActivity extends Activity implements View.OnClickListener {
-    private final String TAG = "beichen";
-    private EditText etJSName, etJSRule, etJSOri, etJSMod;
-    private ListView listView;
-    private ReplaceItemAdapter replaceItemAdapter;
-    private List<ReplaceItem> list;
-    private Handler mHandler = new Handler(){
-        @Override
-        public void handleMessage(Message msg) {
-            switch (msg.what){
-                case 1:
-                    if (msg.arg1 == 1){
-                        Toast.makeText(JSReplaceActivity.this, "更新数据成功", Toast.LENGTH_SHORT).show();
-                    }else if (msg.arg1 == 0){
-                        Toast.makeText(JSReplaceActivity.this, "更新数据错误,请查看日志", Toast.LENGTH_SHORT).show();
-                    }
-                    break;
-                case 2:
-                    replaceItemAdapter = new ReplaceItemAdapter(JSReplaceActivity.this, R.layout.rule_item, list, callBack);
-                    listView.setAdapter(replaceItemAdapter);
-                    listView.setOnItemLongClickListener(listener);
-                    listView.setItemsCanFocus(true);
-                    Toast.makeText(JSReplaceActivity.this, "初始化数据成功", Toast.LENGTH_SHORT).show();
-                    break;
-            }
-        }
-    };
+public class JSReplaceActivity extends BaseActivity<ReplaceItem> implements View.OnClickListener{
 
-    private DataCallBack callBack = new DataCallBack() {
-        @Override
-        public void dataChange() {
-            // 数据改变后覆盖写入配置文件
-            new Thread(){
-                @Override
-                public void run() {
-                    boolean ret = Utils.saveReplaceSettings(list);
-                    Message msg = new Message();
-                    if (ret){
-                        msg.arg1 = 1;
-                    }else {
-                        msg.arg1 = 0;
-                    }
-                    msg.what = 1;
-                    mHandler.sendMessage(msg);
-                }
-            }.run();
-        }
-    };
-
-    private AdapterView.OnItemLongClickListener listener = new AdapterView.OnItemLongClickListener() {
-        @Override
-        public boolean onItemLongClick(AdapterView<?> parent, View view, final int position, long id) {
-            Log.e("beichen", "长按 " + position);
-            new AlertDialog.Builder(JSReplaceActivity.this)
-                    .setTitle("编辑")
-                    .setMessage("是否删除本项数据或删除后重新编辑")
-                    .setNegativeButton("取消", null)
-                    .setPositiveButton("确定", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            list.remove(position);
-                            replaceItemAdapter.notifyDataSetChanged();
-                        }
-                    })
-                    .setNeutralButton("重新编辑", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            ReplaceItem replaceItem = list.get(position);
-                            list.remove(position);
-                            etJSName.setText(replaceItem.fileName);
-                            etJSRule.setText(replaceItem.rule);
-                            etJSOri.setText(replaceItem.ori);
-                            etJSMod.setText(replaceItem.mod);
-                            replaceItemAdapter.notifyDataSetChanged();
-                        }
-                    })
-                    .create().show();
-            return true;
-        }
-    };
+    private EditText etGameName, etFileName, etAppId, etJSOri, etJSMod;
+    private CheckBox cbAvailable;
+    private static final String TAG = JSReplaceActivity.class.getSimpleName();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.replace_activity);
-        etJSName = findViewById(R.id.et_js_name);
-        etJSRule = findViewById(R.id.et_js_rule);
-        etJSOri = findViewById(R.id.et_js_ori);
-        etJSMod = findViewById(R.id.et_js_mod);
+        etGameName = findViewById(R.id.et_replace_game_name);
+        etAppId = findViewById(R.id.et_replace_game_appid);
+        etFileName = findViewById(R.id.et_replace_name);
+        etJSOri = findViewById(R.id.et_replace_js_ori);
+        etJSMod = findViewById(R.id.et_replace_js_mod);
+        cbAvailable = findViewById(R.id.cb_replace_available);
         findViewById(R.id.btn_add_rule).setOnClickListener(this);
-        listView = findViewById(R.id.list_view);
-        //initData();
+        expandableListView = findViewById(R.id.exlist_replace);
+        initData();
         initList();
 
     }
 
     public void initData(){
-        ReplaceItem replaceItem0 = new ReplaceItem("game.js", "", "1e4==InitMark.uid", "1e4!=InitMark.uid");
-        ReplaceItem replaceItem1 = new ReplaceItem("game.js", "", "for(var d=i.boxes,h=a+.5*InitMark.stageOffHeight,u=0;8>u;u++)if(d[u+1]>0&&t[\"hitImg\"+u].hitTestPoint(o,h)){this._mark=u+1;break}", "for(var d=i.boxes,u=0;u<8;u++)if(d[u+1]>0){this._mark=u+1;break}");
-        ReplaceItem replaceItem2 = new ReplaceItem("game.js", "", "e[\"island\"+n].initIslandView(i)}", "e[\"island\"+n].initIslandView(i)}var tar=0;if(dataManager.data.stealTarget.crowns==dataManager.data.stealIslands[0].crowns){tar=1;}else if(dataManager.data.stealTarget.crowns==dataManager.data.stealIslands[1].crowns){tar=2;}else{tar=3;}console.log(\"猜金币,选择: \"+tar);new TextPop(\"选择: \"+tar);");
-        ReplaceItem replaceItem3 = new ReplaceItem("game.js", "", "var t=wx.createRewardedVideoAd({adUnitId:e});t.load().then(function(){return t.show()}).catch(function(e){return console.log(e.errMsg)}),t.onClose(function(e){console.log(\"onClose:\",e),n&&n(),t.offClose()}),t.onError(function(e){console.log(\"error:\",e),o&&o(),t.offError()})", "console.log(\"onClose:\", e);n&&n();");
-        ReplaceItem replaceItem4 = new ReplaceItem("game.js", "", "e.attackTitan=function(t,n,i,a,o,r){", "e.attackTitan=function(t,n,i,a,o,r){if(a){i=200;}else{i=100;}");
+        ReplaceItem replaceItem0 = new ReplaceItem("海盗来了", "", "game.js", "1e4==InitMark.uid", "1e4!=InitMark.uid", true);
+        ReplaceItem replaceItem1 = new ReplaceItem("海盗来了", "","game.js","for(var d=i.boxes,h=a+.5*InitMark.stageOffHeight,u=0;8>u;u++)if(d[u+1]>0&&t[\"hitImg\"+u].hitTestPoint(o,h)){this._mark=u+1;break}", "for(var d=i.boxes,u=0;u<8;u++)if(d[u+1]>0){this._mark=u+1;break}", true);
+        ReplaceItem replaceItem2 = new ReplaceItem("海盗来了", "","game.js", "e[\"island\"+n].initIslandView(i)}", "e[\"island\"+n].initIslandView(i)}var tar=0;if(dataManager.data.stealTarget.crowns==dataManager.data.stealIslands[0].crowns){tar=1;}else if(dataManager.data.stealTarget.crowns==dataManager.data.stealIslands[1].crowns){tar=2;}else{tar=3;}console.log(\"猜金币,选择: \"+tar);new TextPop(\"选择: \"+tar);", true);
+        ReplaceItem replaceItem3 = new ReplaceItem("海盗来了", "","game.js", "var t=wx.createRewardedVideoAd({adUnitId:e});t.load().then(function(){return t.show()}).catch(function(e){return console.log(e.errMsg)}),t.onClose(function(e){console.log(\"onClose:\",e),n&&n(),t.offClose()}),t.onError(function(e){console.log(\"error:\",e),o&&o(),t.offError()})", "console.log(\"onClose:\", e);n&&n();", true);
+        ReplaceItem replaceItem4 = new ReplaceItem("海盗来了", "","game.js", "e.attackTitan=function(t,n,i,a,o,r){", "e.attackTitan=function(t,n,i,a,o,r){if(a){i=200;}else{i=100;}", true);
         List<ReplaceItem> list = new ArrayList<>();
         list.add(replaceItem0);
         list.add(replaceItem1);
         list.add(replaceItem2);
         list.add(replaceItem3);
         list.add(replaceItem4);
-        Utils.saveReplaceSettings(list);
+        LinkedHashMap<String, List<ReplaceItem>> map1 = new LinkedHashMap<>();
+        map1.put("海盗来了", list);
+        Utils.saveSettings(map1);
     }
 
     private void initList() {
         new Thread(){
             @Override
             public void run() {
-                list = Utils.readReplaceSettings();
-                if (list == null){
-                    list = new ArrayList<>();
+                hashMap = Utils.readSettings(ReplaceItem.class);
+                if (hashMap == null){
+                    hashMap = new LinkedHashMap<String, List<ReplaceItem>>();
                 }
-                mHandler.sendEmptyMessage(2);
+                Message message = new Message();
+                message.what = INIT_DATA_SUCCESS;
+                message.arg1 = R.layout.replace_children_layout;
+                handler.sendMessage(message);
             }
         }.run();
     }
@@ -150,23 +81,122 @@ public class JSReplaceActivity extends Activity implements View.OnClickListener 
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.btn_add_rule:
-                if (TextUtils.isEmpty(etJSName.getText().toString()) || TextUtils.isEmpty(etJSOri.getText().toString())) {
-                    Toast.makeText(this, "脚本名称和被替换字符串不能为空", Toast.LENGTH_SHORT).show();
+                String gameName = etGameName.getText().toString();
+                if (TextUtils.isEmpty(gameName)){
+                    Toast.makeText(this, "游戏名字不能为空", Toast.LENGTH_SHORT).show();
                     break;
                 }
+                String appId = TextUtils.isEmpty(etAppId.getText().toString()) ? "" : etAppId.getText().toString();
+                String fileName = etFileName.getText().toString();
+                if (TextUtils.isEmpty(fileName)){
+                    Toast.makeText(this, "脚本文件名不能为空", Toast.LENGTH_SHORT).show();
+                    break;
+                }
+                String jsOri = etJSOri.getText().toString();
+                if (TextUtils.isEmpty(jsOri)){
+                    Toast.makeText(this, "替换前脚本不能为空", Toast.LENGTH_SHORT).show();
+                    break;
+                }
+                String jsMod = etJSMod.getText().toString();
+                boolean available = cbAvailable.isChecked();
                 ReplaceItem replaceItem = new ReplaceItem();
-                replaceItem.fileName = etJSName.getText().toString();
-                String tmp = TextUtils.isEmpty(etJSRule.getText().toString()) ? "" : etJSRule.getText().toString();
-                replaceItem.rule = tmp;
-                replaceItem.ori = etJSOri.getText().toString();
-                tmp = TextUtils.isEmpty(etJSMod.getText().toString()) ? "" : etJSMod.getText().toString();
-                replaceItem.mod = tmp;
-                list.add(replaceItem);
-                replaceItemAdapter.notifyDataSetChanged();
+                replaceItem.setGameName(gameName);
+                replaceItem.setAppId(appId);
+                replaceItem.setFileName(fileName);
+                replaceItem.setOri(jsOri);
+                replaceItem.setMod(jsMod);
+                replaceItem.setAvailable(available);
+                if (hashMap.containsKey(gameName)){
+                    hashMap.get(gameName).add(replaceItem);
+                    handler.sendEmptyMessage(EXLIST_CHILD_CHANGE);
+                }else {
+                    List<ReplaceItem> list = new ArrayList<>();
+                    list.add(replaceItem);
+                    hashMap.put(gameName, list);
+                    handler.sendEmptyMessage(EXLIST_GROUP_CHANGE);
+                }
                 break;
         }
     }
-    public interface DataCallBack{
-        void dataChange();
+
+    @Override
+    public boolean onChildClick(ExpandableListView parent, View v, int groupPosition, int childPosition, long id) {
+        Log.d(TAG, this.getClass().getSimpleName() + " onChildClick: " + groupPosition + " " + childPosition);
+        return true;
     }
+
+    @Override
+    public boolean onGroupClick(ExpandableListView parent, View v, int groupPosition, long id) {
+
+        Log.d(TAG, this.getClass().getSimpleName() + " onGroupClick: " + groupPosition);
+        return false;
+    }
+
+    @Override
+    public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+        Log.d(TAG, this.getClass().getSimpleName() + " onItemLongClick: " + position);
+        final long packedPosition = expandableListView.getExpandableListPosition(position);
+        final int groupPosition = ExpandableListView.getPackedPositionGroup(packedPosition);
+        final int childPosition = ExpandableListView.getPackedPositionChild(packedPosition);
+        Log.d(TAG, "当前长按的位置为, 父: " + groupPosition + " 子: " + childPosition);
+        if (childPosition == -1) {                                   // 长按父容器时 childPostion = -1
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("警告")
+                    .setMessage("您正在试图删除该游戏所有数据, 确定删除吗?")
+                    .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            hashMap.remove(Utils.LinkedHashMapIndex2Key(hashMap, groupPosition));
+                            handler.sendEmptyMessage(EXLIST_GROUP_CHANGE);
+                        }
+                    })
+                    .setNegativeButton("取消", null);
+            builder.show();
+        } else {                                                     // 长按的是某个子项
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("警告")
+                    .setMessage("您正在试图删除或修改该项数据, 确定删除或修改吗?")
+                    .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            hashMap.get(Utils.LinkedHashMapIndex2Key(hashMap, groupPosition)).remove(childPosition);
+                            if (hashMap.get(Utils.LinkedHashMapIndex2Key(hashMap, groupPosition)).size() > 0){
+                                handler.sendEmptyMessage(EXLIST_CHILD_CHANGE);
+                            }else {
+                                hashMap.remove(Utils.LinkedHashMapIndex2Key(hashMap, groupPosition));
+                                handler.sendEmptyMessage(EXLIST_GROUP_CHANGE);
+                            }
+                        }
+                    })
+                    .setNegativeButton("取消", null)
+                    .setNeutralButton("重新编辑", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            ReplaceItem item = (ReplaceItem) hashMap.get(Utils.LinkedHashMapIndex2Key(hashMap, groupPosition)).get(childPosition);
+                            etGameName.setText(item.getGameName());
+                            etAppId.setText(item.getAppId());
+                            etFileName.setText(item.getFileName());
+                            etJSOri.setText(item.getOri());
+                            etJSMod.setText(item.getMod());
+                            cbAvailable.setChecked(item.isAvailable());
+                            hashMap.get(Utils.LinkedHashMapIndex2Key(hashMap, groupPosition)).remove(childPosition);
+                            handler.sendEmptyMessage(EXLIST_CHILD_CHANGE);
+                        }
+                    });
+            builder.show();
+        }
+        return true;
+    }
+
+    @Override
+    public void onGroupExpand(int groupPosition) {
+
+    }
+
+    @Override
+    public void onGroupCollapse(int groupPosition) {
+
+    }
+
+
 }

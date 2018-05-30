@@ -3,9 +3,9 @@ package com.beichen.hookwxx5.plugin;
 import android.annotation.TargetApi;
 import android.os.Build;
 import android.os.Environment;
-import android.text.TextUtils;
 import android.util.Log;
 
+import com.beichen.hookwxx5.data.BaseItem;
 import com.beichen.hookwxx5.data.InjectItem;
 import com.beichen.hookwxx5.data.ReplaceItem;
 
@@ -16,10 +16,8 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,134 +25,65 @@ import java.util.Map;
 public class Utils {
     private static final String TAG = Utils.class.getSimpleName();
 
-    public static final String JS_REPLACE_FILE_NAME = "beichen_hookwxapkg";
-    public static final String JS_INJECT_FILE_NAME = "beichen_inject";
-
-    public static boolean saveReplaceSettings(List<ReplaceItem> list){
-        boolean ret = false;
-        if (!Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)){
-            Log.e(TAG, "未正确挂载SD卡,无法写入数据");
-            return ret;
-        }
-        File file = new File(Environment.getExternalStorageDirectory(), JS_REPLACE_FILE_NAME);
-        FileWriter fw = null;
-        try {
-            if (file.isDirectory()) file.delete();
-            if (!file.exists()) file.createNewFile();
-            if (list.size() == 0){
-                file.delete();
-                return true;
-            }
-            fw = new FileWriter(file);      // 这里每次覆盖写入即可
-            for (ReplaceItem replaceItem : list){
-                JSONObject obj = ReplaceItem.ReplaceItem2JSON(replaceItem);
-                if (obj != null){
-                    fw.write(obj.toString());
-                    fw.write("\n");
-                }
-            }
-            ret = true;
-        }catch (Exception e){
-            Log.e(TAG, "写入数据出错", e);
-        }finally {
-            try {
-                if (fw != null) fw.close();
-            } catch (IOException e) {
-                Log.e(TAG, "IO error", e);
-            }
-        }
-        return ret;
-    }
-
-    public static List<ReplaceItem> readReplaceSettings(){
-        List<ReplaceItem> list = new ArrayList<>();
-        if (!Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)){
-            Log.e(TAG, "没有正确挂载SD卡,无法读取数据");
-            return null;
-        }
-        File file = new File(Environment.getExternalStorageDirectory(), JS_REPLACE_FILE_NAME);
-        if (!file.exists()) {
-            Log.d(TAG, JS_REPLACE_FILE_NAME + " 文件不存在没有数据");
-            return null;
-        }
-        if (!file.isFile()) {
-            Log.d(TAG, JS_REPLACE_FILE_NAME + " 不是文件,无法读取数据");
-            return null;
-        }
-        BufferedReader br = null;
-        FileInputStream fis = null;
-        try {
-            fis = new FileInputStream(file);
-            br = new BufferedReader(new InputStreamReader(fis));
-            String line = "";
-            while ((line = br.readLine()) != null){
-                if (!TextUtils.isEmpty(line)){
-                    JSONObject jsonObject = new JSONObject(line);
-                    list.add(ReplaceItem.JSON2ReplaceItem(jsonObject));
-                }
-            }
-        }catch (Exception e){
-            Log.e(TAG, "读取配置文件出错", e);
-
-        }finally {
-            try {
-                if (br != null) br.close();
-                if (fis != null) fis.close();
-            } catch (IOException e) {
-                Log.e(TAG, "读取配置文件出错", e);
-            }
-        }
-        return list;
-    }
-
     @TargetApi(Build.VERSION_CODES.KITKAT)
-    public static boolean saveInjectSettings(LinkedHashMap<String, List<InjectItem>> map){
+    public static <T extends BaseItem> boolean saveSettings(LinkedHashMap<String, List<T>> map){
         boolean ret = false;
         if (!Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)){
             Log.e(TAG, "没有正确挂载SD卡,无法读写数据");
             return ret;
         }
-        File file = new File(Environment.getExternalStorageDirectory(), JS_INJECT_FILE_NAME);
-        if (map.size() <= 0){
-            Log.e(TAG, "删除所有数据");
-            file.delete();
-            return true;
+        // 如果 map 没有元素我们则无法知道其具体的类型
+        if (map == null){
+            Log.e(TAG, "写入的数据不能为空,这将导致无法知道具体类型");
+            return ret;
         }
-
+        File file = null;
+        if (map.size() == 0){   // 没有数据的情况下可以尝试添加一个,看是否报错
+            List<InjectItem> item = new ArrayList<>();
+            try {
+                map.put("test", (List<T>) item);
+                map.clear();
+                file = new File(Environment.getExternalStorageDirectory(), new InjectItem().getProfile());
+                Log.d(TAG, "删除配置文件: " + file.getAbsolutePath());
+                file.delete();
+                return true;
+            }catch (Exception e){
+                // 报错则说明类型不匹配
+                file = new File(Environment.getExternalStorageDirectory(), new ReplaceItem().getProfile());
+                Log.d(TAG, "删除配置文件: " + file.getAbsolutePath());
+                file.delete();
+                return true;
+            }
+        }
+        try {
+            T tmp = map.get(Utils.LinkedHashMapIndex2Key(map, 0)).get(0);
+            file = new File(Environment.getExternalStorageDirectory(), tmp.getClass().newInstance().getProfile());
+        } catch (InstantiationException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
         FileWriter fw = null;
-        String[] itemArr = new String[map.size()];
         try {
             fw = new FileWriter(file);
-            int index = 0;
-            for (Map.Entry<String, List<InjectItem>> entry : map.entrySet()){
+            JSONArray jsonArray = new JSONArray();
+            for (Map.Entry<String, List<T>> entry : map.entrySet()){
                 String game = entry.getKey();
-                List<InjectItem> list = entry.getValue();
-                JSONObject[] arr = new JSONObject[list.size()];
+                List<T> list = entry.getValue();
+                JSONArray arr = new JSONArray();
                 for (int i = 0; i < list.size(); i++){
-                    arr[i] = InjectItem.InjectItem2JSON(list.get(i));
+                    arr.put(list.get(i).item2Json());
                 }
-                JSONArray jsArr = new JSONArray(arr);
                 JSONObject object = new JSONObject();
-                object.put(InjectItem.JSON_INJECT_KEY_NAME, game);
-                object.put(InjectItem.JSON_INJECT_VALUE_NAME, jsArr);
-                itemArr[index] = object.toString();
-                index++;
+                object.put(BaseItem.JSON_KEY_NAME, game);
+                object.put(BaseItem.JSON_VALUE_NAME, arr);
+                jsonArray.put(object);
             }
-            fw.write("[");
-            for (int i = 0; i < itemArr.length; i++){       // 写入时构造成json数组格式,方便读取
-                Log.e(TAG, itemArr[i]);
-                if (i == itemArr.length - 1){
-                    fw.write(itemArr[i]);
-                    break;
-                }
-                fw.write(itemArr[i]);
-                fw.write(",");
-            }
-            fw.write("]");
+            fw.write(jsonArray.toString());
             fw.flush();
             fw.close();
             ret = true;
-            Log.e(TAG, "保存数据成功");
+            Log.d(TAG, "保存数据成功");
         }catch (Exception e){
             Log.e(TAG, "保存数据错误", e);
         }finally {
@@ -167,15 +96,20 @@ public class Utils {
         return ret;
     }
 
-    public static LinkedHashMap<String, List<InjectItem>> readInjectSettings(){
+    public static <T extends BaseItem> LinkedHashMap<String, List<T>> readSettings(Class<T> cls){
         if (!Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)){
             Log.e(TAG, "没有正确挂载SD卡,无法读取数据");
             return null;
         }
-        LinkedHashMap<String, List<InjectItem>> map = new LinkedHashMap<>();
-        File file = new File(Environment.getExternalStorageDirectory(), JS_INJECT_FILE_NAME);
+        LinkedHashMap<String, List<T>> map = new LinkedHashMap<>();
+        File file = null;
+        try {
+            file = new File(Environment.getExternalStorageDirectory(), cls.newInstance().getProfile());
+        } catch (Exception e) {
+           return null;
+        }
         if (!file.exists()){
-            Log.e(TAG, "当前还没有数据");
+            Log.d(TAG, "当前还没有数据");
             return null;
         }
         BufferedReader br = null;
@@ -190,11 +124,12 @@ public class Utils {
             }
             JSONArray jsonArray = new JSONArray(sb.toString());
             for (int i = 0; i < jsonArray.length(); i++){
-                List<InjectItem> list = new ArrayList<>();
-                JSONArray arr = jsonArray.getJSONObject(i).getJSONArray(InjectItem.JSON_INJECT_VALUE_NAME);
-                String game = jsonArray.getJSONObject(i).getString(InjectItem.JSON_INJECT_KEY_NAME);
+                List<T> list = new ArrayList<>();
+                String game = jsonArray.optJSONObject(i).optString(BaseItem.JSON_KEY_NAME);
+                JSONArray arr = jsonArray.optJSONObject(i).optJSONArray(BaseItem.JSON_VALUE_NAME);
+                T obj = cls.newInstance();
                 for (int j = 0; j < arr.length(); j++){
-                    InjectItem item = InjectItem.JSON2InjectItem(arr.getJSONObject(j));
+                    T item = (T) obj.json2Item(arr.optJSONObject(j));
                     list.add(item);
                 }
                 map.put(game, list);
@@ -213,7 +148,7 @@ public class Utils {
         return map;
     }
 
-    public static String LinkedHashMapIndex2Key(LinkedHashMap<String, List<InjectItem>> map, int index){
+    public static <T extends BaseItem> String LinkedHashMapIndex2Key(LinkedHashMap<String, List<T>> map, int index){
         int i = 0;
         for (String key : map.keySet()){
             if (index == i){
@@ -224,7 +159,7 @@ public class Utils {
         return null;
     }
 
-    public static List<InjectItem> LinkedHashMapIndex2Value(LinkedHashMap<String, List<InjectItem>> map, int index){
+    public static <T extends BaseItem> List<T> LinkedHashMapIndex2Value(LinkedHashMap<String, List<T>> map, int index){
         int i = 0;
         for (String key : map.keySet()){
             if (index == i){

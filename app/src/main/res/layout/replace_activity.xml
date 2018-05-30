@@ -13,8 +13,38 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="输入要替换的脚本规则,重启微信后应用新替换规则,而不必重启手机"
+            android:text="输入要替换的脚本规则,重启微信后应用新替换规则"
             />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="游戏名: "/>
+            <EditText
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="小游戏名字"
+                android:id="@+id/et_replace_game_name"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="appId: "/>
+            <EditText
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="小游戏appId,可以为空"
+                android:id="@+id/et_replace_game_appid"/>
+        </LinearLayout>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -27,7 +57,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint="想要修改的脚本文件名"
-                android:id="@+id/et_js_name"/>
+                android:id="@+id/et_replace_name"/>
         </LinearLayout>
         <LinearLayout
             android:layout_width="match_parent"
@@ -36,26 +66,12 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="匹配规则: "/>
-            <EditText
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="该脚本包含的唯一标识,可为空"
-                android:id="@+id/et_js_rule"/>
-        </LinearLayout>
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="原始字符串: "/>
+                android:text="修改前: "/>
             <EditText
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint=""
-                android:id="@+id/et_js_ori"/>
+                android:id="@+id/et_replace_js_ori"/>
         </LinearLayout>
         <LinearLayout
             android:layout_width="match_parent"
@@ -64,29 +80,29 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="修改后字符串: "/>
+                android:text="修改后: "/>
             <EditText
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint=""
-                android:id="@+id/et_js_mod"/>
+                android:id="@+id/et_replace_js_mod"/>
         </LinearLayout>
+        <CheckBox
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="是否启动"
+            android:id="@+id/cb_replace_available"/>
         <Button
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:id="@+id/btn_add_rule"
             android:text="添加条目"/>
     </LinearLayout>
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="已保存规则:"
-        android:textSize="23dp"/>
-    <ListView
+    <ExpandableListView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:id="@+id/list_view">
-    </ListView>
+        android:id="@+id/exlist_replace">
+    </ExpandableListView>
 
 
 </LinearLayout>
