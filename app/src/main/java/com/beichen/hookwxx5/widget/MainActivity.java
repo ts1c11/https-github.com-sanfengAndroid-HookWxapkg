@@ -2,13 +2,14 @@ package com.beichen.hookwxx5.widget;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.nfc.Tag;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.beichen.hookwxx5.R;
-import com.beichen.hookwxx5.data.BaseItem;
 import com.beichen.hookwxx5.data.InjectItem;
 import com.beichen.hookwxx5.data.ReplaceItem;
 import com.beichen.hookwxx5.plugin.Utils;
@@ -28,6 +29,13 @@ public class MainActivity extends Activity implements View.OnClickListener {
         tv_replace_help = findViewById(R.id.tv_replace_help);
         tv_inject_help = findViewById(R.id.tv_inject_help);
         initHelp();
+        String ver = Utils.getWXVerName(this);
+        if (ver.isEmpty()){
+            Toast.makeText(this, "获取微信版本失败", Toast.LENGTH_SHORT).show();
+        }else {
+            Utils.saveWXSettings("wx_ver", ver);
+        }
+
     }
 
     private void initHelp() {
